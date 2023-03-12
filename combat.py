@@ -24,6 +24,9 @@ def simulate_combat(attacker,defender):
     atkFollowUps = 0
     defFollowUps = 0
 
+    dragonCheckA = False
+    dragonCheckD = False
+
     atkSpecialCounter = attacker.getCooldown()
     defSpecialCounter = defender.getCooldown()
     permASC = atkSpecialCounter
@@ -58,13 +61,17 @@ def simulate_combat(attacker,defender):
         if key == "waterBoost":
             if atkStats[0] >= defStats[0] + 3:
                 atkStats[4] += atkSkills["waterBoost"] * 2
+
         if key == "slaying":
-            atkSpecialCounter -= 1
-            permASC -= 1
+            atkSpecialCounter -= atkSkills["slaying"]
+            permASC -= atkSkills["slaying"]
+        if key == "dragonCheck":
+            dragonCheckA = True
 
         if key == "triAdeptS" or key == "triAdeptW":
             if atkSkills[key] > triAdept:
                 triAdept = atkSkills[key]
+
         if key == "FollowUpEph":
             if atkStats[0]/atkStats[0] > .90:
                 atkFollowUps += 1
@@ -134,6 +141,8 @@ def simulate_combat(attacker,defender):
         if key == "slaying":
             defSpecialCounter -= 1
             permDSC -= 1
+        if key == "dragonCheck":
+            dragonCheckD = True
 
         if key == "triAdeptS" or key == "triAdeptW":
             if defSkills[key] > triAdept:
@@ -200,7 +209,7 @@ def simulate_combat(attacker,defender):
     x = 0 #isResTargeted by defr
     if attacker.getTargetedDef() == 1:
         r += 1
-    if attacker.getTargetedDef() == 0:
+    if attacker.getTargetedDef() == 0 and dragonCheckA:
         if defender.getRange() == 2:
             if defStats[3] > defStats[4]:
                 r += 1
@@ -211,7 +220,7 @@ def simulate_combat(attacker,defender):
 
     if defender.getTargetedDef() == 1:
         x += 1
-    if defender.getTargetedDef() == 0:
+    if defender.getTargetedDef() == 0 and dragonCheckD:
         if attacker.getRange() == 2:
             if atkStats[3] > atkStats[4]:
                 x += 1
@@ -678,7 +687,7 @@ guardianAxe = Weapon("Guardian's Axe", "Accelerates Special trigger (cooldown co
 irisTome = Weapon("Iris's Tome", "Grants bonus to unit’s Atk = total bonuses on unit during combat.",14,2,{"combAtk": 0})
 bindingBlade = Weapon("Binding Blade","If foe initiates combat, grants Def/Res+2 during combat.",16,1,{"defStance":1,"resStance":1})
 fujinYumi = Weapon("Fujin Yumi", "Effective against flying foes. If unit's HP ≥ 50%, unit can move through foes' spaces.",14,2,{"pass":2,"effFly":0})
-gloomBreath = Weapon("Gloom Breath", "At start of turn, inflicts Atk/Spd-7 on foes within 2 spaces through their next actions. After combat, if unit attacked, inflicts Atk/Spd-7 on target and foes within 2 spaces of target through their next actions. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",16,1,{"threatAtk":3,"threatSpd":7,"sealAtk":3,"sealSpd":3,"atkSmoke":3,"spdSmoke":3})
+gloomBreath = Weapon("Gloom Breath", "At start of turn, inflicts Atk/Spd-7 on foes within 2 spaces through their next actions. After combat, if unit attacked, inflicts Atk/Spd-7 on target and foes within 2 spaces of target through their next actions. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",16,1,{"threatAtk":3,"threatSpd":7,"sealAtk":3,"sealSpd":3,"atkSmoke":3,"spdSmoke":3,"dragonCheck":0})
 cordeliaLance = Weapon("Cordelia's Lance","Inflicts Spd-2. If unit initiates combat, unit attacks twice.",10,1,{"spdBoost": -2,"BraveAW":1})
 armads = Weapon("Armads","If unit's HP ≥ 80% and foe initiates combat, unit makes a guaranteed follow-up attack.",16,1,{"QRW":2})
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
@@ -689,7 +698,7 @@ chercheAxe = Weapon("Cherche's Axe","Inflicts Spd-5. If unit initiates combat, u
 durandal = Weapon("Durandal","If unit initiates combat, grants Atk+4 during combat.",16,1,{"atkBlow":2})
 argentBow = Weapon("Argent Bow","Effective against flying foes. Inflicts Spd-2. If unit initiates combat, unit attacks twice.",8,2,{"effFly":0,"spdBoost": -2,"BraveAW":1})
 solitaryBlade = Weapon("Solitary Blade","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
-
+purifyingBreath = Weapon("Purifying Breath","Slows Special trigger (cooldown count+1). Unit can counterattack regardless of foe's range. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",14,1,{"slaying":-1,"dragonCheck":0})
 
 
 #SPECIALS
@@ -772,10 +781,13 @@ anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
 berkut = Hero("Berkut",43,34,22,31,24,"Lance",1,darkRoyalSpear,None,waterBoost3,None,wardCavalry)
 cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
 eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBreaker3,None)
-klein = Hero("Klein",40,31,33,20,24,"CBow",2,argentBow,glacies,deathBlow3,quickRiposte,None)
-lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",1,solitaryBlade,glimmer,spd3,vantage3,None)
+klein = Hero("Klein",40,31,33,20,24,"CBow",0,argentBow,glacies,deathBlow3,quickRiposte,None)
+lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",0,solitaryBlade,glimmer,spd3,vantage3,None)
+nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
 
-heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,cherche,eliwood,klein]
+
+heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
+          cherche,eliwood,klein,lonqu,nowi]
 
 roy.addSpecialLines("\"I will win!\"",
                     "\"There's my opening!\"",
@@ -812,12 +824,12 @@ lonqu.addSpecialLines("\"No hard feelings.\"",
                       "\"You're no challenge.\"",
                       "\"Give up.\"")
 
-r = simulate_combat(lonqu,hector)
+r = simulate_combat(cordelia,cherche)
 print(r)
 
-results = []
+#results = []
 #for hero in heroes:
-#    results.append(simulate_combat(eliwood,hero))
+#    results.append(simulate_combat(cordelia,hero))
 #print(results)
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
