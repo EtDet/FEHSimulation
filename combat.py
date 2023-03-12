@@ -58,6 +58,9 @@ def simulate_combat(attacker,defender):
         if key == "waterBoost":
             if atkStats[0] >= defStats[0] + 3:
                 atkStats[4] += atkSkills["waterBoost"] * 2
+        if key == "slaying":
+            atkSpecialCounter -= 1
+            permASC -= 1
 
         if key == "triAdeptS" or key == "triAdeptW":
             if atkSkills[key] > triAdept:
@@ -80,6 +83,9 @@ def simulate_combat(attacker,defender):
         if key == "swordBreak" and defender.getWeaponType() == "Sword":
             atkFollowUps += 1
             defFollowUps -= 1
+        if key == "axeBreak" and defender.getWeaponType() == "Axe":
+            atkFollowUps += 1
+            defFollowUps -= 1
 
         if key == "defReduce":
             ASpecialType = "Offense"
@@ -87,7 +93,10 @@ def simulate_combat(attacker,defender):
             atkSpEffects.update({"defReduce":atkSkills[key]})
         if key == "dmgBoost":
             ASpecialType = "Offense"
-            atkSpEffects.update({"defReduce": atkSkills[key]})
+            atkSpEffects.update({"dmgBoost": atkSkills[key]})
+        if key == "resBoostSp":
+            ASpecialType = "Offense"
+            atkSpEffects.update({"resBoost": atkSkills[key]})
         if key == "closeShield":
             ASpecialType = "Defense"
             atkSpEffects.update({"closeShield":atkSkills[key]})
@@ -122,6 +131,10 @@ def simulate_combat(attacker,defender):
             if defStats[0] >= atkStats[0] + 3:
                 defStats[4] += defSkills["waterBoost"] * 2
 
+        if key == "slaying":
+            defSpecialCounter -= 1
+            permDSC -= 1
+
         if key == "triAdeptS" or key == "triAdeptW":
             if defSkills[key] > triAdept:
                 triAdept = defSkills[key]
@@ -143,6 +156,9 @@ def simulate_combat(attacker,defender):
         if key == "swordBreak" and attacker.getWeaponType() == "Sword":
             atkFollowUps -= 1
             defFollowUps += 1
+        if key == "axeBreak" and attacker.getWeaponType() == "Axe":
+            atkFollowUps -= 1
+            defFollowUps += 1
         if key == "vantage":
             if defStats[0]/defStats[0] >= 0.75 - (0.25 * (3-defSkills["vantage"])):
                 vantageEnabled = True
@@ -157,6 +173,9 @@ def simulate_combat(attacker,defender):
         if key == "closeShield":
             DSpecialType = "Defense"
             defSpEffects.update({"closeShield":defSkills[key]})
+        if key == "resBoostSp":
+            DSpecialType = "Offense"
+            defSpEffects.update({"resBoost": defSkills[key]})
 
 
     if flyEffA and defender.getMovement() == 2:
@@ -258,6 +277,7 @@ def simulate_combat(attacker,defender):
         defStats[0] = 0
         defAlive = False
         print(defender.getName() + " falls.")
+
     if braveATKR and defAlive:
         braveATK1 = atkStats[1] - defStats[3+r]
         if braveATK1 < 0: braveATK1 = 0
@@ -275,6 +295,7 @@ def simulate_combat(attacker,defender):
 
     if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive:
         dmgBoost = 0
+        extraDmg = 0
         if defSpecialCounter == 0 and DSpecialType == "Offense":
             print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
             print(defender.getSpecialLine())
@@ -286,10 +307,14 @@ def simulate_combat(attacker,defender):
                 if key == "dmgBoost":
                     defSpecialTriggered = True
                     dmgBoost = defSpEffects["dmgBoost"] * 0.1
+                if key == "resBoost":
+                    defSpecialTriggered = True
+                    extraDmg = math.trunc(defStats[4] * 0.1 * defSpEffects["resBoost"])
 
-        defrATK1 = defStats[1] - atkStats[3+x]
+        defrATK1 = defStats[1] - atkStats[3+x] + extraDmg
         if defrATK1 < 0: defrATK1 = 0
         defrATK1 += math.trunc(defrATK1 * dmgBoost)
+
 
         atkStats[0] = atkStats[0] - defrATK1
         print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK1) + " damage.")
@@ -313,6 +338,7 @@ def simulate_combat(attacker,defender):
             atkStats[0] = 0
             atkAlive = False
             print(attacker.getName() + " falls.")
+
         if braveDEFR and atkAlive:
             braveDEF1 = defStats[1] - atkStats[3+x]
             if braveDEF1 < 0: braveDEF1 = 0
@@ -326,7 +352,13 @@ def simulate_combat(attacker,defender):
                 print(attacker.getName() + " falls.")
 
     # second attack by attacker
+
+
     if atkFollowUps > 0 and atkAlive and defAlive:
+        dmgBoost = 0
+        extraDmg = 0
+
+        #OFFENSIVE SPECIAL CHECK BY ATTACKER
         if atkSpecialCounter == 0 and ASpecialType == "Offense":
             print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
             print(attacker.getSpecialLine())
@@ -335,11 +367,20 @@ def simulate_combat(attacker,defender):
                     atkSpecialTriggered = True
                     defStats[3] -= math.trunc(defStats[3] * .10 * atkSpEffects["defReduce"])
                     defStats[4] -= math.trunc(defStats[4] * .10 * atkSpEffects["defReduce"])
+                if key == "dmgBoost":
+                    atkSpecialTriggered = True
+                    dmgBoost = atkSpEffects["dmgBoost"] * 0.1
+                if key == "resBoost":
+                    atkSpecialTriggered = True
+                    extraDmg = math.trunc(atkStats[4] * 0.1 * atkSpEffects["resBoost"])
 
-
-        atkrATK2 = atkStats[1] - defStats[3+r]
+        atkrATK2 = (atkStats[1] - defStats[3+r]) + extraDmg
         if atkrATK2 < 0: atkrATK2 = 0
 
+        atkrATK2 += math.trunc(atkrATK2 * dmgBoost)
+
+
+        #DEFENSIVE SPECIAL CHECK BY DEFENDER
         if defSpecialCounter == 0 and DSpecialType == "Defense" and attacker.getRange() == 1:
             print(defender.getName() + " procs " + defender.getSpName() + ".")
             print(defender.getSpecialLine())
@@ -347,6 +388,7 @@ def simulate_combat(attacker,defender):
                 if key == "closeShield":
                     defSpecialTriggered = True
                     atkrATK2 -= math.trunc(atkrATK2 * 0.10 * defSpEffects["closeShield"])
+
 
         defStats[0] = defStats[0] - atkrATK2
 
@@ -372,11 +414,54 @@ def simulate_combat(attacker,defender):
             defStats[0] = 0
             defAlive = False
             print(defender.getName() + " falls.")
+
         if braveATKR and defAlive:
-            braveATK2 = atkStats[1] - defStats[3 + r]
+            if atkSpecialCounter == 0 and ASpecialType == "Offense":
+                print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
+                print(attacker.getSpecialLine())
+                for key in atkSpEffects:
+                    if key == "defReduce":
+                        atkSpecialTriggered = True
+                        defStats[3] -= math.trunc(defStats[3] * .10 * atkSpEffects["defReduce"])
+                        defStats[4] -= math.trunc(defStats[4] * .10 * atkSpEffects["defReduce"])
+                    if key == "resBoost":
+                        atkSpecialTriggered = True
+                        extraDmg = math.trunc(atkStats[4] * 0.1 * atkSpEffects["resBoost"])
+
+
+            braveATK2 = atkStats[1] - defStats[3 + r] + extraDmg
             if braveATK2 < 0: atkrATK2 = 0
+
+            #DEFENSIVE SPECIAL CHECK BY DEFENDER
+            if defSpecialCounter == 0 and DSpecialType == "Defense" and attacker.getRange() == 1:
+                print(defender.getName() + " procs " + defender.getSpName() + ".")
+                print(defender.getSpecialLine())
+                for key in defSpEffects:
+                    if key == "closeShield":
+                        defSpecialTriggered = True
+                        braveATK2 -= math.trunc(atkrATK2 * 0.10 * defSpEffects["closeShield"])
+
             defStats[0] = defStats[0] - braveATK2
+
             print(attacker.getName() + " attacks " + defender.getName() + " for " + str(braveATK2) + " damage.")
+
+            if atkSpecialCounter > 0: atkSpecialCounter -= 1
+            if defSpecialCounter > 0: defSpecialCounter -= 1
+            if atkSpecialTriggered: atkSpecialCounter = permASC
+            if defSpecialTriggered: defSpecialCounter = permDSC
+
+            atkSpecialTriggered = False
+            defSpecialTriggered = False
+
+            newHPA = atkStats[0]
+            newHPD = defStats[0]
+
+            atkStats = atkInitStats
+            defStats = defInitStats
+
+            atkStats[0] = newHPA
+            defStats[0] = newHPD
+
             if defStats[0] <= 0:
                 defStats[0] = 0
                 defAlive = False
@@ -601,6 +686,11 @@ siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent alli
 pantherLance = Weapon("Panther Lance","During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)",16,1,{"localBoost2Atk":2,"localBoost2Def":2})
 darkRoyalSpear = Weapon("Dark Royal Spear","If foe initiates combat or if foe's HP = 100% at start of combat, grants Atk/Def/Res+5 to unit during combat.",16,1,{"berkutBoost":5})
 chercheAxe = Weapon("Cherche's Axe","Inflicts Spd-5. If unit initiates combat, unit attacks twice.",11,1,{"spdBoost": -5,"BraveAW":1})
+durandal = Weapon("Durandal","If unit initiates combat, grants Atk+4 during combat.",16,1,{"atkBlow":2})
+argentBow = Weapon("Argent Bow","Effective against flying foes. Inflicts Spd-2. If unit initiates combat, unit attacks twice.",8,2,{"effFly":0,"spdBoost": -2,"BraveAW":1})
+solitaryBlade = Weapon("Solitary Blade","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
+
+
 
 #SPECIALS
 moonbow = Special("Moonbow","Treats foe's Def/Res as if reduced by 30% during combat.",{"defReduce":3},2)
@@ -610,12 +700,14 @@ nightSky = Special("Night Sky","Boosts damage dealt by 50%.",{"dmgBoost":5,},3)
 glimmer = Special("Glimmer","Boosts damage dealt by 50%.",{"dmgBoost":5,},2)
 astra = Special("Astra","Boosts damage dealt by 150%.",{"dmgBoost":15,},4)
 
-bonfire = Special("Bonfire","Boosts damage by 50% of unit's Def.",{"defBoost":5},3)
+bonfire = Special("Bonfire","Boosts damage by 50% of unit's Def.",{"defBoostSp":5},3)
+glacies = Special("Glacies","Boosts damage by 80% of unit's Res.",{"resBoostSp":8},4)
 
 #BASED ON POSITIONING, NOT FOE'S RANGE!!!!!
 #CHANGE THIS ONCE YOU GET TO THE MAP!!!!!
 pavise = Special("Pavise","Reduces damage from an adjacent foe's attack by 50%.",{"closeShield":5},3)
 escutcheon = Special("Escutcheon","Reduces damage from an adjacent foe's attack by 30%.",{"closeShield":3},2)
+sacredCowl = Special("Sacred Cowl","If foe is 2 spaces from unit, reduces damage from foe's attack by 30%.",{"distantShield":3},2)
 aegis = Special("Aegis","If foe is 2 spaces from unit, reduces damage from foe's attack by 50%.",{"distantShield":5},3)
 
 
@@ -647,7 +739,9 @@ closeCounter = Skill("Close Counter", "Unit can counterattack regardless of foe'
 distanctCounter = Skill("Distant Counter", "Unit can counterattack regardless of foe's range.",{"dCounter":0})
 
 swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"swordBreak":3})
+axeBreaker3 = Skill("Axebreaker 3","If unit's HP ≥ 50% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"axeBreak":3})
 vantage3 = Skill("Vantage 3","If unit's HP ≤ 75% and foe initiates combat, unit can counterattack before foe's first attack.",{"vantage":3})
+quickRiposte = Skill("Quick Riposte 3", "If unit's HP ≥ 70% and foe initiates combat, unit makes a guaranteed follow-up attack.",{"QRS":3})
 
 spurRes = Skill("Spur Res 3", "Grants Res+4 to adjacent allies during combat.",{"spurRes":3})
 wardCavalry = Skill("Ward Cavalry","Grants Def/Res+4 to cavalry allies within 2 spaces during combat.",{"ward":1})
@@ -677,8 +771,11 @@ abel = Hero("Abel",39,33,32,25,25,"Lance",1,pantherLance,None,hp5,swordBreaker3,
 anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
 berkut = Hero("Berkut",43,34,22,31,24,"Lance",1,darkRoyalSpear,None,waterBoost3,None,wardCavalry)
 cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
+eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBreaker3,None)
+klein = Hero("Klein",40,31,33,20,24,"CBow",2,argentBow,glacies,deathBlow3,quickRiposte,None)
+lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",1,solitaryBlade,glimmer,spd3,vantage3,None)
 
-heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut]
+heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,cherche,eliwood,klein]
 
 roy.addSpecialLines("\"I will win!\"",
                     "\"There's my opening!\"",
@@ -705,13 +802,23 @@ anna.addSpecialLines("\"This one's on the house!\"",
                      "\"We will triumph!\"",
                      "\"Onward to victory!\"")
 
-r = simulate_combat(ephraim,berkut)
+klein.addSpecialLines("\"I won't miss.\"",
+                      "\"Such foolishness.\"",
+                      "\"At this range...\"",
+                      "\"Now, my turn.\"")
+
+lonqu.addSpecialLines("\"No hard feelings.\"",
+                      "\"Be silent!\"",
+                      "\"You're no challenge.\"",
+                      "\"Give up.\"")
+
+r = simulate_combat(lonqu,hector)
 print(r)
 
 results = []
-for hero in heroes:
-    results.append(simulate_combat(ephraim,hero))
-print(results)
+#for hero in heroes:
+#    results.append(simulate_combat(eliwood,hero))
+#print(results)
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
 #JUST KEEP IN MIND ONCE YOU GET TO THAT BRIDGE WITH SKILLS NOT MEANT TO STACK
