@@ -55,9 +55,21 @@ def simulate_combat(attacker,defender):
             atkStats[4] += atkSkills["resBoost"]
         if key == "atkBlow":
             atkStats[1] += atkSkills["atkBlow"] * 2
+        if key == "waterBoost":
+            if atkStats[0] >= defStats[0] + 3:
+                atkStats[4] += atkSkills["waterBoost"] * 2
+
         if key == "triAdeptS" or key == "triAdeptW":
             if atkSkills[key] > triAdept:
                 triAdept = atkSkills[key]
+        if key == "FollowUpEph":
+            if atkStats[0]/atkStats[0] > .90:
+                atkFollowUps += 1
+        if key == "berkutBoost":
+            if defStats[0] == defStats[0]:
+                atkStats[1] += 5
+                atkStats[3] += 5
+                atkStats[4] += 5
         if key == "BraveAW" or key == "BraveAS" or key == "BraveBW":
             braveATKR = True
         if key == "effFly":
@@ -73,6 +85,9 @@ def simulate_combat(attacker,defender):
             ASpecialType = "Offense"
             ASpDefReduce = atkSkills[key]
             atkSpEffects.update({"defReduce":atkSkills[key]})
+        if key == "dmgBoost":
+            ASpecialType = "Offense"
+            atkSpEffects.update({"defReduce": atkSkills[key]})
         if key == "closeShield":
             ASpecialType = "Defense"
             atkSpEffects.update({"closeShield":atkSkills[key]})
@@ -87,6 +102,7 @@ def simulate_combat(attacker,defender):
     DSpIDR = 0  # ignore damage reduction
     DSpRetaliateB = 0  # strikes back with boosted stat amount (negating fang, godlike reflexes, etc.)
     DSpRetaliateV = 0  # strikes back with health boosted amount (ice mirror)
+    vantageEnabled = False
 
     defSpEffects = {}
 
@@ -101,13 +117,23 @@ def simulate_combat(attacker,defender):
             defStats[3] += defSkills["defStance"] * 2
         if key == "resStance":
             defStats[4] += defSkills["resStance"] * 2
+
+        if key == "waterBoost":
+            if defStats[0] >= atkStats[0] + 3:
+                defStats[4] += defSkills["waterBoost"] * 2
+
         if key == "triAdeptS" or key == "triAdeptW":
             if defSkills[key] > triAdept:
                 triAdept = defSkills[key]
         if key == "cCounter" or key == "dCounter":
             ignoreRng = True
+        if key == "berkutBoost":
+            defStats[1] += 5
+            defStats[3] += 5
+            defStats[4] += 5
         if key == "BraveDW" or key == "BraveBW":
             braveDEFR = True
+
         if key == "effFly":
             flyEffD = True
         if key == "effArm":
@@ -117,11 +143,17 @@ def simulate_combat(attacker,defender):
         if key == "swordBreak" and attacker.getWeaponType() == "Sword":
             atkFollowUps -= 1
             defFollowUps += 1
+        if key == "vantage":
+            if defStats[0]/defStats[0] >= 0.75 - (0.25 * (3-defSkills["vantage"])):
+                vantageEnabled = True
 
         if key == "defReduce":
             DSpecialType = "Offense"
             DSpDefReduce = defSkills[key]
             defSpEffects.update({"defReduce":defSkills[key]})
+        if key == "dmgBoost":
+            DSpecialType = "Offense"
+            defSpEffects.update({"dmgBoost": defSkills[key]})
         if key == "closeShield":
             DSpecialType = "Defense"
             defSpEffects.update({"closeShield":defSkills[key]})
@@ -242,7 +274,7 @@ def simulate_combat(attacker,defender):
     # first counterattack by defender
 
     if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive:
-
+        dmgBoost = 0
         if defSpecialCounter == 0 and DSpecialType == "Offense":
             print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
             print(defender.getSpecialLine())
@@ -251,9 +283,13 @@ def simulate_combat(attacker,defender):
                     defSpecialTriggered = True
                     atkStats[3] -= math.trunc(atkStats[3] * .10 * defSpEffects["defReduce"])
                     atkStats[4] -= math.trunc(atkStats[4] * .10 * defSpEffects["defReduce"])
+                if key == "dmgBoost":
+                    defSpecialTriggered = True
+                    dmgBoost = defSpEffects["dmgBoost"] * 0.1
 
         defrATK1 = defStats[1] - atkStats[3+x]
         if defrATK1 < 0: defrATK1 = 0
+        defrATK1 += math.trunc(defrATK1 * dmgBoost)
 
         atkStats[0] = atkStats[0] - defrATK1
         print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK1) + " damage.")
@@ -349,6 +385,7 @@ def simulate_combat(attacker,defender):
     # second counterattack by defender
 
     if (defFollowUps > 0 and (attacker.getRange() == defender.getRange() or ignoreRng)) and atkAlive and defAlive:
+        dmgBoost = 0 # used for night sky, glimmer, astra, and deadeye
         if defSpecialCounter == 0 and DSpecialType == "Offense":
             print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
             print(defender.getSpecialLine())
@@ -357,11 +394,15 @@ def simulate_combat(attacker,defender):
                     defSpecialTriggered = True
                     atkStats[3] -= math.trunc(atkStats[3] * .10 * defSpEffects["defReduce"])
                     atkStats[4] -= math.trunc(atkStats[4] * .10 * defSpEffects["defReduce"])
-
-
+                if key == "dmgBoost":
+                    defSpecialTriggered = True
+                    dmgBoost = 0.10 * defSpEffects["dmgBoost"]
 
         defrATK2 = defStats[1] - atkStats[3+x]
         if defrATK2 < 0: defrATK2 = 0
+
+        defrATK2 += math.trunc(defrATK2 * dmgBoost)
+
         if atkSpecialCounter == 0 and ASpecialType == "Defense" and attacker.getRange() == 1:
             print(attacker.getName() + " procs " + attacker.getSpName() + ".")
             print(attacker.getSpecialLine())
@@ -556,15 +597,18 @@ gloomBreath = Weapon("Gloom Breath", "At start of turn, inflicts Atk/Spd-7 on fo
 cordeliaLance = Weapon("Cordelia's Lance","Inflicts Spd-2. If unit initiates combat, unit attacks twice.",10,1,{"spdBoost": -2,"BraveAW":1})
 armads = Weapon("Armads","If unit's HP ≥ 80% and foe initiates combat, unit makes a guaranteed follow-up attack.",16,1,{"QRW":2})
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
+siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack",16,1,{"HPBoost":3,"FollowUpEph":0})
 pantherLance = Weapon("Panther Lance","During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)",16,1,{"localBoost2Atk":2,"localBoost2Def":2})
+darkRoyalSpear = Weapon("Dark Royal Spear","If foe initiates combat or if foe's HP = 100% at start of combat, grants Atk/Def/Res+5 to unit during combat.",16,1,{"berkutBoost":5})
+chercheAxe = Weapon("Cherche's Axe","Inflicts Spd-5. If unit initiates combat, unit attacks twice.",11,1,{"spdBoost": -5,"BraveAW":1})
 
 #SPECIALS
 moonbow = Special("Moonbow","Treats foe's Def/Res as if reduced by 30% during combat.",{"defReduce":3},2)
 aether = Special("Aether","Treats foe's Def/Res as if reduced by 50% during combat. Restores HP = half of damage dealt.",{"defReduce":5,"healSelf":5},4)
 
-nightSky = Special("Night Sky","Boosts damage dealt by 50%.",{"dmgBoost":1,},3)
-glimmer = Special("Glimmer","Boosts damage dealt by 50%.",{"dmgBoost":1,},2)
-astra = Special("Astra","Boosts damage dealt by 150%.",{"dmgBoost":3,},4)
+nightSky = Special("Night Sky","Boosts damage dealt by 50%.",{"dmgBoost":5,},3)
+glimmer = Special("Glimmer","Boosts damage dealt by 50%.",{"dmgBoost":5,},2)
+astra = Special("Astra","Boosts damage dealt by 150%.",{"dmgBoost":15,},4)
 
 bonfire = Special("Bonfire","Boosts damage by 50% of unit's Def.",{"defBoost":5},3)
 
@@ -591,6 +635,8 @@ res1 = Skill("Resistance +1", "Grants Res+1.",{"resBoost":1})
 res2 = Skill("Resistance +2", "Grants Res+2.",{"resBoost":2})
 res3 = Skill("Resistance +3", "Grants Res+3.",{"resBoost":3})
 
+waterBoost3 = Skill("Water Boost 3","At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.",{"waterBoost":3})
+
 # HIGHEST TRIANGLE ADEPT LEVEL USED
 # SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
 # HIGHEST LEVEL IS BASICALLY MAX
@@ -601,7 +647,10 @@ closeCounter = Skill("Close Counter", "Unit can counterattack regardless of foe'
 distanctCounter = Skill("Distant Counter", "Unit can counterattack regardless of foe's range.",{"dCounter":0})
 
 swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"swordBreak":3})
+vantage3 = Skill("Vantage 3","If unit's HP ≤ 75% and foe initiates combat, unit can counterattack before foe's first attack.",{"vantage":3})
 
+spurRes = Skill("Spur Res 3", "Grants Res+4 to adjacent allies during combat.",{"spurRes":3})
+wardCavalry = Skill("Ward Cavalry","Grants Def/Res+4 to cavalry allies within 2 spaces during combat.",{"ward":1})
 goadArmor = Skill("Goad Armor","Grants Atk/Spd+4 to armored allies within 2 spaces during combat.",{"goad":3})
 
 # PW Brave y
@@ -623,10 +672,13 @@ takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,
 corrin = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,None,None)
 cordelia = Hero("Cordelia",40,35,35,22,25,"Lance",2,cordeliaLance,None,triangleAdept3,None,None)
 hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,None)
-ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmund,moonbow,deathBlow3,None,None)
+ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmundEff,moonbow,deathBlow3,None,None)
 abel = Hero("Abel",39,33,32,25,25,"Lance",1,pantherLance,None,hp5,swordBreaker3,None)
+anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
+berkut = Hero("Berkut",43,34,22,31,24,"Lance",1,darkRoyalSpear,None,waterBoost3,None,wardCavalry)
+cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
 
-heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi]
+heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut]
 
 roy.addSpecialLines("\"I will win!\"",
                     "\"There's my opening!\"",
@@ -647,12 +699,18 @@ ephraim.addSpecialLines("\"Coming through!\"",
                         "\"Wonderful!\"",
                         "\"Give me more—more!\"",
                         "\"All right. Let's fight!\"")
-r = simulate_combat(cordelia,clive)
+
+anna.addSpecialLines("\"This one's on the house!\"",
+                     "\"More than you bargained for?\"",
+                     "\"We will triumph!\"",
+                     "\"Onward to victory!\"")
+
+r = simulate_combat(ephraim,berkut)
 print(r)
 
 results = []
 for hero in heroes:
-    results.append(simulate_combat(cordelia,hero))
+    results.append(simulate_combat(ephraim,hero))
 print(results)
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
