@@ -34,6 +34,7 @@ def simulate_combat(attacker,defender):
     atkFollowUps = 0
     defFollowUps = 0
 
+    # for if range = 2 lower def/res dragonstones
     dragonCheckA = False
     dragonCheckD = False
 
@@ -46,6 +47,11 @@ def simulate_combat(attacker,defender):
     defSCCB = 0
     atkDoHeavyBladeCheck = False
     defDoHeavyBladeCheck = False
+
+    atkDoSelfDmgCheck = False
+    defDoSelfDmgCheck = False
+    atkSelfDmg = 0
+    defSelfDmg = 0
 
     ASpDefReduce = 0
     ASpDmgIncrease = 0
@@ -61,23 +67,24 @@ def simulate_combat(attacker,defender):
     atkSpEffects = {}
 
     for key in atkSkills:
-        if key == "HPBoost":
-            atkStats[0] += atkSkills["HPBoost"]
-        if key == "atkBoost":
-            atkStats[1] += atkSkills["atkBoost"]
-        if key == "spdBoost":
-            atkStats[2] += atkSkills["spdBoost"]
-        if key == "defBoost":
-            atkStats[3] += atkSkills["defBoost"]
-        if key == "resBoost":
-            atkStats[4] += atkSkills["resBoost"]
-        if key == "atkBlow":
-            atkStats[1] += atkSkills["atkBlow"] * 2
+        if key == "HPBoost":  atkStats[0] += atkSkills["HPBoost"]
+        if key == "atkBoost": atkStats[1] += atkSkills["atkBoost"]
+        if key == "spdBoost": atkStats[2] += atkSkills["spdBoost"]
+        if key == "defBoost": atkStats[3] += atkSkills["defBoost"]
+        if key == "resBoost": atkStats[4] += atkSkills["resBoost"]
+
+        if key == "atkBlow": atkStats[1] += atkSkills["atkBlow"] * 2
+        if key == "spdBlow": atkStats[2] += atkSkills["spdBlow"] * 2
+        if key == "defBlow": atkStats[3] += atkSkills["defBlow"] * 2
+        if key == "resBlow": atkStats[4] += atkSkills["resBlow"] * 2
+
         if key == "waterBoost":
             if atkStats[0] >= defStats[0] + 3:
                 atkStats[4] += atkSkills["waterBoost"] * 2
         if key == "heavyBlade":
             atkDoHeavyBladeCheck = True
+        if key == "atkOnlySelfDmg":
+            atkDoSelfDmgCheck = True
 
         if key == "slaying":
             atkSpecialCounter -= atkSkills["slaying"]
@@ -163,10 +170,10 @@ def simulate_combat(attacker,defender):
         if key == "defBoost": defStats[3] += defSkills["defBoost"]
         if key == "resBoost": defStats[4] += defSkills["resBoost"]
 
-        if key == "defStance":
-            defStats[3] += defSkills["defStance"] * 2
-        if key == "resStance":
-            defStats[4] += defSkills["resStance"] * 2
+        if key == "atkStance": defStats[1] += defSkills["atkStance"] * 2
+        if key == "spdStance": defStats[2] += defSkills["spdStance"] * 2
+        if key == "defStance": defStats[3] += defSkills["defStance"] * 2
+        if key == "resStance": defStats[4] += defSkills["resStance"] * 2
 
         if key == "waterBoost":
             if defStats[0] >= atkStats[0] + 3:
@@ -196,6 +203,8 @@ def simulate_combat(attacker,defender):
             armEffD = True
         if key == "effDragon":
             drgEffD = True
+        if key == "atkOnlySelfDmg":
+            defDoSelfDmgCheck = True
 
         if key == "QRW" or key == "QRS":
             defFollowUps += 1
@@ -331,6 +340,8 @@ def simulate_combat(attacker,defender):
     atkInitStats = atkStats[:]
     defInitStats = defStats[:]
 
+    if atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
+
     if atkSpecialCounter == 0 and ASpecialType == "Offense":
         print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
         print(attacker.getSpecialLine())
@@ -388,6 +399,9 @@ def simulate_combat(attacker,defender):
     # first counterattack by defender
 
     if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive and not cannotCounter:
+
+        if defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
+
         dmgBoost = 0
         extraDmg = 0
         if defSpecialCounter == 0 and DSpecialType == "Offense":
@@ -633,6 +647,18 @@ def simulate_combat(attacker,defender):
                 atkAlive = False
                 print(attacker.getName() + " falls.")
 
+    if atkAlive and atkSelfDmg != 0:
+        atkStats[0] -= atkSelfDmg
+        print(attacker.getName() + " takes " + str(atkSelfDmg) + " damage after combat.")
+        if atkStats[0] < 1: atkStats[0] = 1
+
+
+    if defAlive and defSelfDmg != 0:
+        defStats[0] -= defSelfDmg
+        print(defender.getName() + " takes " + str(defSelfDmg) + " damage after combat.")
+        if defStats[0] < 1: defStats[0] = 1
+
+
     return atkStats[0],defStats[0]
 
 class Hero:
@@ -789,6 +815,7 @@ argentBow = Weapon("Argent Bow","Effective against flying foes. Inflicts Spd-2. 
 solitaryBlade = Weapon("Solitary Blade","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
 purifyingBreath = Weapon("Purifying Breath","Slows Special trigger (cooldown count+1). Unit can counterattack regardless of foe's range. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",14,1,{"slaying":-1,"dragonCheck":0,"dCounter":0})
 tomeOfOrder = Weapon("Tome of Order","Effective against flying foes. Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"effFly":0,"colorlessAdv":0})
+devilAxe = Weapon("Devil Axe","Grants Atk/Spd/Def/Res+4 during combat, but if unit attacked, deals 4 damage to unit after combat.",16,1,{"atkBlow":2,"spdBlow":2,"defBlow":2,"resBlow":2,"atkStance":2,"spdStance":2,"defStance":2,"resStance":2,"atkOnlySelfDmg":4})
 
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
 siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack",16,1,{"HPBoost":3,"FollowUpEph":0})
@@ -844,7 +871,14 @@ res1 = Skill("Resistance +1", "Grants Res+1.",{"resBoost":1})
 res2 = Skill("Resistance +2", "Grants Res+2.",{"resBoost":2})
 res3 = Skill("Resistance +3", "Grants Res+3.",{"resBoost":3})
 
+fortressDef1 = Skill("Fortress Def 1","Grants Def+3. Inflicts Atk-3.",{"defBoost":3,"atkBoost":-3})
+fortressDef2 = Skill("Fortress Def 2","Grants Def+4. Inflicts Atk-3.",{"defBoost":4,"atkBoost":-3})
+fortressDef3 = Skill("Fortress Def 3","Grants Def+5. Inflicts Atk-3.",{"defBoost":5,"atkBoost":-3})
+
+fortressRes1 = Skill("Fortress Res 1","Grants Res+3. Inflicts Atk-3.",{"resBoost":3,"atkBoost":-3})
+fortressRes2 = Skill("Fortress Res 2","Grants Res+4. Inflicts Atk-3.",{"resBoost":4,"atkBoost":-3})
 fortressRes3 = Skill("Fortress Res 3","Grants Res+5. Inflicts Atk-3.",{"resBoost":5,"atkBoost":-3})
+
 
 waterBoost3 = Skill("Water Boost 3","At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.",{"waterBoost":3})
 
@@ -853,7 +887,33 @@ heavyBlade3 = Skill("Heavy Blade 3","If unit's Atk > foe's Atk, grants Special c
 # HIGHEST TRIANGLE ADEPT LEVEL USED
 # SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
 # HIGHEST LEVEL IS BASICALLY MAX
+deathBlow1 = Skill("Death Blow 1", "If unit initiates combat, grants Atk+2 during combat.",{"atkBlow": 1})
+deathBlow2 = Skill("Death Blow 2", "If unit initiates combat, grants Atk+4 during combat.",{"atkBlow": 2})
 deathBlow3 = Skill("Death Blow 3", "If unit initiates combat, grants Atk+6 during combat.",{"atkBlow": 3})
+dartingBlow1 = Skill("Darting Blow 1", "If unit initiates combat, grants Spd+2 during combat.",{"spdBlow":1})
+dartingBlow2 = Skill("Darting Blow 2", "If unit initiates combat, grants Spd+4 during combat.",{"spdBlow":2})
+dartingBlow3 = Skill("Darting Blow 3", "If unit initiates combat, grants Spd+6 during combat.",{"spdBlow":3})
+armoredBlow1 = Skill("Armored Blow 1", "If unit initiates combat, grants Def+2 during combat.",{"defBlow":1})
+armoredBlow2 = Skill("Armored Blow 2", "If unit initiates combat, grants Def+4 during combat.",{"defBlow":2})
+armoredBlow3 = Skill("Armored Blow 3", "If unit initiates combat, grants Def+6 during combat.",{"defBlow":3})
+wardingBlow1 = Skill("Warding Blow 1", "If unit initiates combat, grants Res+2 during combat.",{"resBlow":1})
+wardingBlow2 = Skill("Warding Blow 2", "If unit initiates combat, grants Res+4 during combat.",{"resBlow":2})
+wardingBlow3 = Skill("Warding Blow 3", "If unit initiates combat, grants Res+6 during combat.",{"resBlow":3})
+
+fierceStance1 = Skill("Fierce Stance 1", "If foe initiates combat, grants Atk+2 during combat.",{"atkStance":1})
+fierceStance2 = Skill("Fierce Stance 2", "If foe initiates combat, grants Atk+4 during combat.",{"atkStance":2})
+fierceStance3 = Skill("Fierce Stance 3", "If foe initiates combat, grants Atk+6 during combat.",{"atkStance":3})
+dartingStance1 = Skill("Darting Stance 1", "If foe initiates combat, grants Spd+2 during combat.",{"spdStance":1})
+dartingStance2 = Skill("Darting Stance 2", "If foe initiates combat, grants Spd+4 during combat.",{"spdStance":2})
+dartingStance3 = Skill("Darting Stance 3", "If foe initiates combat, grants Spd+6 during combat.",{"spdStance":3})
+steadyStance1 = Skill("Steady Stance 1", "If foe initiates combat, grants Def+2 during combat.",{"defStance":1})
+steadyStance2 = Skill("Steady Stance 2", "If foe initiates combat, grants Def+4 during combat.",{"defStance":2})
+steadyStance3 = Skill("Steady Stance 3", "If foe initiates combat, grants Def+6 during combat.",{"defStance":3})
+wardingStance1 = Skill("Warding Stance 1", "If foe initiates combat, grants Res+2 during combat.",{"resStance":1})
+wardingStance2 = Skill("Warding Stance 2", "If foe initiates combat, grants Res+4 during combat.",{"resStance":2})
+wardingStance3 = Skill("Warding Stance 3", "If foe initiates combat, grants Res+6 during combat.",{"resStance":3})
+
+
 triangleAdept3 = Skill("Triangle Adept 3","If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.",{"triAdeptS":3})
 
 closeCounter = Skill("Close Counter", "Unit can counterattack regardless of foe's range.",{"cCounter":0})
@@ -881,23 +941,21 @@ goadArmor = Skill("Goad Armor","Grants Atk/Spd+4 to armored allies within 2 spac
 #print(noatun)
 #print(deathBlow3)
 #print(guardianAxe)
-
-alfonse = Hero("Alfonse",43,35,25,32,22,"Sword",0,folkvangr,None,deathBlow3,None,None)
-hawkeye = Hero("Hawkeye",45,33,22,28,30,"Axe",0,guardianAxe,None,deathBlow3,None,None)
-nino = Hero("Nino",33,33,36,19,26,"GTome",0,irisTome,None,res3,None,None)
-roy = Hero("Roy",44,30,31,25,28,"Sword",0,bindingBlade,moonbow,triangleAdept3,None,None)
-takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,None)
-corrin = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,None,None)
-cordelia = Hero("Cordelia",40,35,35,22,25,"Lance",2,cordeliaLance,None,triangleAdept3,None,None)
-hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,None)
 abel = Hero("Abel",39,33,32,25,25,"Lance",1,pantherLance,None,hp5,swordBreaker3,None)
 anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
+alfonse = Hero("Alfonse",43,35,25,32,22,"Sword",0,folkvangr,None,deathBlow3,None,None)
+barst = Hero("Barst",46,33,32,30,17,"Axe",0,devilAxe,None,None,None,None)
 cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
+cordelia = Hero("Cordelia",40,35,35,22,25,"Lance",2,cordeliaLance,None,triangleAdept3,None,None)
+corrin = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,None,None)
 eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBreaker3,None)
-
-
+hawkeye = Hero("Hawkeye",45,33,22,28,30,"Axe",0,guardianAxe,None,deathBlow3,None,None)
+hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,None)
 lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",0,solitaryBlade,glimmer,spd3,vantage3,None)
+nino = Hero("Nino",33,33,36,19,26,"GTome",0,irisTome,None,res3,None,None)
 nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
+roy = Hero("Roy",44,30,31,25,28,"Sword",0,bindingBlade,moonbow,triangleAdept3,None,None)
+takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,None)
 
 ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmundEff,moonbow,deathBlow3,None,None)
 julia = Hero("Julia",38,35,26,17,32,"GTome",0,naga,dragonFang,res3,None,None)
@@ -914,11 +972,13 @@ clive = Hero("Clive",45,33,25,32,19,"Lance",1,lordlyLance,escutcheon,def3,None,N
 innes = Hero("Innes",35,33,34,14,31,"CBow",0,nidhogg,iceberg,fortressRes3,cancelAffinity3,None)
 
 heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
-          cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia]
+          cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst]
+
+#print(str(len(heroes)) + " Heroes present. " + str(927-len(heroes)) + " remain to be added.")
 
 alfonse.addSpecialLines("\"Above all...the mission!\"",
                         "\"Let me through!\"",
-                        "\"My apolgies.\"",
+                        "\"My apologies.\"",
                         "\"I'll open the way!\"")
 
 hawkeye.addSpecialLines("\"WUU-OOHHH!\"",
@@ -981,7 +1041,7 @@ lonqu.addSpecialLines("\"No hard feelings.\"",
                       "\"You're no challenge.\"",
                       "\"Give up.\"")
 
-r = simulate_combat(julia,nowi)
+r = simulate_combat(nowi,barst)
 print(r)
 
 results = []
