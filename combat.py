@@ -7,12 +7,20 @@ def simulate_combat(attacker,defender):
     defSkills = defender.getSkills()
     defStats = defender.getStats()
 
-
     atkStats[1] += attacker.getWeapon().getMT()
     defStats[1] += defender.getWeapon().getMT()
 
     triAdept = -1
+    atkCA = 0
+    defCA = 0
     ignoreRng = False
+    cannotCounter = False
+    doWindsweepCheck = False
+    doWatersweepCheck = False
+
+    AColorlessEff = False
+    DColorlessEff = False
+
     braveATKR = False
     braveDEFR = False
 
@@ -20,6 +28,8 @@ def simulate_combat(attacker,defender):
     flyEffD = False
     armEffA = False
     armEffD = False
+    drgEffA = False
+    drgEffD = False
 
     atkFollowUps = 0
     defFollowUps = 0
@@ -72,6 +82,12 @@ def simulate_combat(attacker,defender):
             if atkSkills[key] > triAdept:
                 triAdept = atkSkills[key]
 
+        if key == "owlBoost":
+            numAlliesNearby = 0
+            atkStats[1] += 2 * numAlliesNearby
+            atkStats[2] += 2 * numAlliesNearby
+            atkStats[3] += 2 * numAlliesNearby
+            atkStats[4] += 2 * numAlliesNearby
         if key == "FollowUpEph":
             if atkStats[0]/atkStats[0] > .90:
                 atkFollowUps += 1
@@ -82,10 +98,13 @@ def simulate_combat(attacker,defender):
                 atkStats[4] += 5
         if key == "BraveAW" or key == "BraveAS" or key == "BraveBW":
             braveATKR = True
+
         if key == "effFly":
             flyEffA = True
         if key == "effArm":
             armEffA = True
+        if key == "effDragon":
+            drgEffA = True
 
         if key == "swordBreak" and defender.getWeaponType() == "Sword":
             atkFollowUps += 1
@@ -93,6 +112,11 @@ def simulate_combat(attacker,defender):
         if key == "axeBreak" and defender.getWeaponType() == "Axe":
             atkFollowUps += 1
             defFollowUps -= 1
+        if key == "windsweep":
+            doWindsweepCheck = True
+            atkFollowUps -= 1
+        if key == "cancelTA":
+            atkCA = atkSkills[key]
 
         if key == "defReduce":
             ASpecialType = "Offense"
@@ -160,6 +184,9 @@ def simulate_combat(attacker,defender):
             flyEffD = True
         if key == "effArm":
             armEffD = True
+        if key == "effDragon":
+            drgEffD = True
+
         if key == "QRW" or key == "QRS":
             defFollowUps += 1
         if key == "swordBreak" and attacker.getWeaponType() == "Sword":
@@ -171,6 +198,8 @@ def simulate_combat(attacker,defender):
         if key == "vantage":
             if defStats[0]/defStats[0] >= 0.75 - (0.25 * (3-defSkills["vantage"])):
                 vantageEnabled = True
+        if key == "cancelTA":
+            defCA = atkSkills[key]
 
         if key == "defReduce":
             DSpecialType = "Offense"
@@ -186,6 +215,12 @@ def simulate_combat(attacker,defender):
             DSpecialType = "Offense"
             defSpEffects.update({"resBoost": defSkills[key]})
 
+    # WINDSWEEP CHECK
+
+    if doWindsweepCheck and atkStats[2] > defStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1:
+        cannotCounter = True
+
+    # EFFECTIVENESS CHECK
 
     if flyEffA and defender.getMovement() == 2:
         atkStats[1] += math.trunc(atkStats[1] * 0.5)
@@ -197,10 +232,32 @@ def simulate_combat(attacker,defender):
     if armEffD and attacker.getMovement() == 3:
         defStats[1] += math.trunc(defStats[1] * 0.5)
 
-    if (attacker.getColor() == "Red" and defender.getColor() == "Green") or (attacker.getColor() == "Green" and defender.getColor() == "Blue") or (attacker.getColor() == "Blue" and defender.getColor() == "Red"):
+    if drgEffA and defender.getTargetedDef() == 0:
+        atkStats[1] += math.trunc(atkStats[1] * 0.5)
+    if drgEffD and attacker.getTargetedDef() == 0:
+        defStats[1] += math.trunc(defStats[1] * 0.5)
+
+    # COLOR ADVANTAGE CHECK
+
+    if (attacker.getColor() == "Red" and defender.getColor() == "Green") or \
+            (attacker.getColor() == "Green" and defender.getColor() == "Blue") or \
+            (attacker.getColor() == "Blue" and defender.getColor() == "Red") or \
+            (defender.getColor() == "Colorless" and AColorlessEff):
+
+        if atkCA == 1 or defCA == 1: triAdept = -1
+        if defCA == 2: triAdept = -1
+        if atkCA == 3: triAdept = -5
         atkStats[1] += math.trunc(atkStats[1] * (0.25 + .05 * triAdept))
         defStats[1] -= math.trunc(defStats[1] * (0.25 + .05 * triAdept))
-    if (attacker.getColor() == "Blue" and defender.getColor() == "Green") or (attacker.getColor() == "Red" and defender.getColor() == "Blue") or (attacker.getColor() == "Green" and defender.getColor() == "Red"):
+
+    if (attacker.getColor() == "Blue" and defender.getColor() == "Green") or \
+            (attacker.getColor() == "Red" and defender.getColor() == "Blue") or \
+            (attacker.getColor() == "Green" and defender.getColor() == "Red") or \
+            (attacker.getColor() == "Colorless" and DColorlessEff):
+
+        if atkCA == 1 or defCA == 1: triAdept = -1
+        if atkCA == 2: triAdept = -1
+        if atkCA == 3: triAdept = -5
         atkStats[1] -= math.trunc(atkStats[1] * (0.25 + .05 * triAdept))
         defStats[1] += math.trunc(defStats[1] * (0.25 + .05 * triAdept))
 
@@ -232,6 +289,7 @@ def simulate_combat(attacker,defender):
     print(atkStats)
     print(defStats)
 
+    # additional follow-up granted by outspeeding
     if(atkStats[2] > defStats[2] + 4):
         atkFollowUps += 1
 
@@ -302,7 +360,7 @@ def simulate_combat(attacker,defender):
 
     # first counterattack by defender
 
-    if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive:
+    if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive and not cannotCounter:
         dmgBoost = 0
         extraDmg = 0
         if defSpecialCounter == 0 and DSpecialType == "Offense":
@@ -478,7 +536,7 @@ def simulate_combat(attacker,defender):
 
     # second counterattack by defender
 
-    if (defFollowUps > 0 and (attacker.getRange() == defender.getRange() or ignoreRng)) and atkAlive and defAlive:
+    if (defFollowUps > 0 and (attacker.getRange() == defender.getRange() or ignoreRng)) and atkAlive and defAlive and cannotCounter:
         dmgBoost = 0 # used for night sky, glimmer, astra, and deadeye
         if defSpecialCounter == 0 and DSpecialType == "Offense":
             print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
@@ -530,6 +588,7 @@ def simulate_combat(attacker,defender):
             atkStats[0] = 0
             atkAlive = False
             print(attacker.getName() + " falls.")
+
         if braveDEFR and atkAlive:
             braveDEF2 = defStats[1] - atkStats[3+x]
             if braveDEF2 < 0: braveDEF2 = 0
@@ -572,7 +631,7 @@ class Hero:
         if self.wpnType == "Lance" or self.wpnType == "BBow" or self.wpnType == "BDagger" or self.wpnType == "BTome" or self.wpnType == "BDragon" or self.wpnType == "BBeast":
             return "Blue"
         else:
-            return "INVALID"
+            return "Colorless"
 
     def getMovement(self):
         return self.move
@@ -699,7 +758,12 @@ durandal = Weapon("Durandal","If unit initiates combat, grants Atk+4 during comb
 argentBow = Weapon("Argent Bow","Effective against flying foes. Inflicts Spd-2. If unit initiates combat, unit attacks twice.",8,2,{"effFly":0,"spdBoost": -2,"BraveAW":1})
 solitaryBlade = Weapon("Solitary Blade","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
 purifyingBreath = Weapon("Purifying Breath","Slows Special trigger (cooldown count+1). Unit can counterattack regardless of foe's range. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",14,1,{"slaying":-1,"dragonCheck":0})
+tomeOfOrder = Weapon("Tome of Order","Effective against flying foes. Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"effFly":0,"colorlessAdv":0})
+almFalchion = Weapon("Falchion","Effective against dragons. At the start of every third turn, unit recovers 10 HP.",16,1,{"effDragon":0,"recover":3})
 
+nidhogg = Weapon("Nidhogg","Effective against flying foes. During combat, boosts unit's Atk/Spd/Def/Res by number of adjacent allies × 2.",14,2,{"effFly":0,"owlBoost":2})
+
+#pointyDemonspanker = Weapon ("Falchion")
 
 #SPECIALS
 moonbow = Special("Moonbow","Treats foe's Def/Res as if reduced by 30% during combat.",{"defReduce":3},2)
@@ -709,7 +773,10 @@ nightSky = Special("Night Sky","Boosts damage dealt by 50%.",{"dmgBoost":5,},3)
 glimmer = Special("Glimmer","Boosts damage dealt by 50%.",{"dmgBoost":5,},2)
 astra = Special("Astra","Boosts damage dealt by 150%.",{"dmgBoost":15,},4)
 
+draconicAura = Special("Draconic Aura","Boosts damage by 30% of unit's Atk.",{"atkBoostSp":3},3)
 bonfire = Special("Bonfire","Boosts damage by 50% of unit's Def.",{"defBoostSp":5},3)
+chillingWind = Special("Chilling Wind","Boosts damage by 50% of unit's Res.",{"resBoostSp":5},4)
+iceberg = Special("Iceberg","Boosts damage by 50% of unit's Res.",{"resBoostSp":5},3)
 glacies = Special("Glacies","Boosts damage by 80% of unit's Res.",{"resBoostSp":8},4)
 
 #BASED ON POSITIONING, NOT FOE'S RANGE!!!!!
@@ -751,6 +818,10 @@ swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against 
 axeBreaker3 = Skill("Axebreaker 3","If unit's HP ≥ 50% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"axeBreak":3})
 vantage3 = Skill("Vantage 3","If unit's HP ≤ 75% and foe initiates combat, unit can counterattack before foe's first attack.",{"vantage":3})
 quickRiposte = Skill("Quick Riposte 3", "If unit's HP ≥ 70% and foe initiates combat, unit makes a guaranteed follow-up attack.",{"QRS":3})
+windsweep3 = Skill("Windsweep 3","If unit initiates combat, unit cannot make a follow-up attack. If unit’s Spd > foe’s Spd and foe uses sword, lance, axe, bow, dagger, or beast damage, foe cannot counterattack.",{"windsweep":3})
+cancelAffinity1 = Skill("Cancel Affinity 1","Neutralizes all weapon-triangle advantage granted by unit's and foe's skills.",{"cancelTA":1})
+cancelAffinity2 = Skill("Cancel Affinity 2","Neutralizes weapon-triangle advantage granted by unit's skills. If unit has weapon-triangle disadvantage, neutralizes weapon-triangle advantage granted by foe's skills.",{"cancelTA":2})
+cancelAffinity3 = Skill("Cancel Affinity 3","Neutralizes weapon-triangle advantage granted by unit's skills. If unit has weapon-triangle disadvantage, reverses weapon-triangle advantage granted by foe's skills.",{"cancelTA":3})
 
 spurRes = Skill("Spur Res 3", "Grants Res+4 to adjacent allies during combat.",{"spurRes":3})
 wardCavalry = Skill("Ward Cavalry","Grants Def/Res+4 to cavalry allies within 2 spaces during combat.",{"ward":1})
@@ -784,25 +855,56 @@ eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBr
 klein = Hero("Klein",40,31,33,20,24,"CBow",0,argentBow,glacies,deathBlow3,quickRiposte,None)
 lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",0,solitaryBlade,glimmer,spd3,vantage3,None)
 nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
+alm = Hero("Alm",45,33,30,28,22,"Sword",0,almFalchion,draconicAura,atk3,windsweep3,None)
 
 
 heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
           cherche,eliwood,klein,lonqu,nowi]
+
+alfonse.addSpecialLines("\"Above all...the mission!\"",
+                        "\"Let me through!\"",
+                        "\"My apolgies.\"",
+                        "\"I'll open the way!\"")
+
+hawkeye.addSpecialLines("\"WUU-OOHHH!\"",
+                        "\"FIGHT!\"",
+                        "\"I know NOTHING of fear!\"",
+                        "\"I'm coming for YOU.\"")
+
+clive.addSpecialLines("\"No hard feelings.\"",
+                      "\"In the name of Zofia!\"",
+                      "\"Make your peace!\"",
+                      "\"Farewell!\"")
+
+nino.addSpecialLines("\"Ahhhhhhh!\"",
+                     "\"I won't lose! Not me!\"",
+                     "\"I can do this!\"",
+                     "\"I'll do my best!\"")
 
 roy.addSpecialLines("\"I will win!\"",
                     "\"There's my opening!\"",
                     "\"By my blade!\"",
                     "\"I won't lose. I won't!\"")
 
+takumi.addSpecialLines("\"Oh, that's it!\"",
+                       "\"Die already!\"",
+                       "\"I'll shoot you down!\"",
+                       "\"You'll never hit this target!\"")
+
+corrin.addSpecialLines("\"We won't give up!\"",
+                       "\"I've made my choice!\"",
+                       "\"I won't surrender!\"",
+                       "\"My path is certain!\"")
+
+cordelia.addSpecialLines("\"I can do this...\"",
+                        "\"Now you've angered me!\"",
+                        "\"I must prevail.\"",
+                        "\"I see an opening!\"")
+
 hector.addSpecialLines("\"I don't back down!\"",
                        "\"Gutsy, aren't you?\"",
                        "\"Enough chitchat!\"",
                        "\"Here we go!\"")
-
-clive.addSpecialLines("\"No hard feelings.\"",
-                      "\"In the name of Zofia!\"",
-                      "\"Make your peace!\"",
-                      "\"Farewell!\"")
 
 ephraim.addSpecialLines("\"Coming through!\"",
                         "\"Wonderful!\"",
@@ -824,10 +926,10 @@ lonqu.addSpecialLines("\"No hard feelings.\"",
                       "\"You're no challenge.\"",
                       "\"Give up.\"")
 
-r = simulate_combat(cordelia,cherche)
+r = simulate_combat(alm,alfonse)
 print(r)
 
-#results = []
+results = []
 #for hero in heroes:
 #    results.append(simulate_combat(cordelia,hero))
 #print(results)
