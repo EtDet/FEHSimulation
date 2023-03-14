@@ -24,6 +24,9 @@ def simulate_combat(attacker,defender):
     braveATKR = False
     braveDEFR = False
 
+    colorlessAdvAtk = True
+    colorlessAdvDef = True
+
     flyEffA = False
     flyEffD = False
     armEffA = False
@@ -43,10 +46,15 @@ def simulate_combat(attacker,defender):
     permASC = atkSpecialCounter
     permDSC = defSpecialCounter
 
-    atkSCCB = 0 # special cooldown charge boost (heavy blade, etc.)
+    atkSCCB = 0 # special cooldown charge boost (heavy blade, flashing blade, etc.)
     defSCCB = 0
     atkDoHeavyBladeCheck = False
     defDoHeavyBladeCheck = False
+    atkDoFlashingBladeCheck = False
+    defDoFlashingBladeCheck = False
+
+    atkFixedSpDmgBoost = 0
+    defFixedSpDmgBoost = 0
 
     atkDoSelfDmgCheck = False
     defDoSelfDmgCheck = False
@@ -81,14 +89,21 @@ def simulate_combat(attacker,defender):
         if key == "waterBoost":
             if atkStats[0] >= defStats[0] + 3:
                 atkStats[4] += atkSkills["waterBoost"] * 2
+
         if key == "heavyBlade":
             atkDoHeavyBladeCheck = True
+        if key == "flashingBlade":
+            atkDoFlashingBladeCheck = True
         if key == "atkOnlySelfDmg":
             atkDoSelfDmgCheck = True
 
         if key == "slaying":
             atkSpecialCounter -= atkSkills["slaying"]
             permASC -= atkSkills["slaying"]
+        if key == "colorlessAdv": colorlessAdvAtk = True
+        if key == "spDmgAdd":
+            atkFixedSpDmgBoost += atkSkills[key]
+
         if key == "dragonCheck":
             dragonCheckA = True
 
@@ -111,8 +126,7 @@ def simulate_combat(attacker,defender):
                 atkStats[3] += 5
                 atkStats[4] += 5
 
-        if key == "heavyBlade":
-            atkDoHeavyBladeCheck = True
+
         if key == "BraveAW" or key == "BraveAS" or key == "BraveBW":
             braveATKR = True
 
@@ -127,6 +141,9 @@ def simulate_combat(attacker,defender):
             atkFollowUps += 1
             defFollowUps -= 1
         if key == "axeBreak" and defender.getWeaponType() == "Axe":
+            atkFollowUps += 1
+            defFollowUps -= 1
+        if key == "gtomeBreak" and defender.getWeaponType() == "GTome":
             atkFollowUps += 1
             defFollowUps -= 1
         if key == "windsweep":
@@ -179,9 +196,17 @@ def simulate_combat(attacker,defender):
             if defStats[0] >= atkStats[0] + 3:
                 defStats[4] += defSkills["waterBoost"] * 2
 
+        if key == "heavyBlade":
+            defDoHeavyBladeCheck = True
+        if key == "flashingBlade":
+            defDoFlashingBladeCheck = True
+
         if key == "slaying":
             defSpecialCounter -= 1
             permDSC -= 1
+        if key == "colorlessAdv": colorlessAdvDef = True
+        if key == "spDmgAdd":
+            defFixedSpDmgBoost += defSkills[key]
         if key == "dragonCheck":
             dragonCheckD = True
 
@@ -214,11 +239,14 @@ def simulate_combat(attacker,defender):
         if key == "axeBreak" and attacker.getWeaponType() == "Axe":
             atkFollowUps -= 1
             defFollowUps += 1
+        if key == "gtomeBreak" and attacker.getWeaponType() == "GTome":
+            atkFollowUps -= 1
+            defFollowUps += 1
         if key == "vantage":
             if defStats[0]/defStats[0] >= 0.75 - (0.25 * (3-defSkills["vantage"])):
                 vantageEnabled = True
         if key == "cancelTA":
-            defCA = atkSkills[key]
+            defCA = defSkills[key]
 
         if key == "defReduce":
             DSpecialType = "Offense"
@@ -241,9 +269,17 @@ def simulate_combat(attacker,defender):
     if atkDoHeavyBladeCheck and atkStats[1] > defStats[1] + (-2 * atkSkills["heavyBlade"] + 7):
         atkSCCB += 1
 
-
     if defDoHeavyBladeCheck and defStats[1] > atkStats[1] + (-2 * defSkills["heavyBlade"] + 7):
         defSCCB += 1
+
+    if atkDoFlashingBladeCheck and atkStats[2] > defStats[2] + (-2 * atkSkills["flashingBlade"] + 7):
+        atkSCCB += 1
+
+    if defDoFlashingBladeCheck and defStats[2] > atkStats[2] + (-2 * defSkills["flashingBlade"] + 7):
+        atkSCCB += 1
+
+    if atkSCCB > 1: atkSCCB = 1
+    if defSCCB > 1: defSCCB = 1
 
     # WINDSWEEP CHECK
 
@@ -272,7 +308,7 @@ def simulate_combat(attacker,defender):
     if (attacker.getColor() == "Red" and defender.getColor() == "Green") or \
             (attacker.getColor() == "Green" and defender.getColor() == "Blue") or \
             (attacker.getColor() == "Blue" and defender.getColor() == "Red") or \
-            (defender.getColor() == "Colorless" and AColorlessEff):
+            (defender.getColor() == "Colorless" and colorlessAdvAtk):
 
         if (atkCA == 1 or defCA == 1) and triAdept != -1: triAdept = -1
         if defCA == 2 and triAdept != -1: triAdept = -1
@@ -283,7 +319,7 @@ def simulate_combat(attacker,defender):
     if (attacker.getColor() == "Blue" and defender.getColor() == "Green") or \
             (attacker.getColor() == "Red" and defender.getColor() == "Blue") or \
             (attacker.getColor() == "Green" and defender.getColor() == "Red") or \
-            (attacker.getColor() == "Colorless" and DColorlessEff):
+            (attacker.getColor() == "Colorless" and colorlessAdvDef):
 
         if (atkCA == 1 or defCA == 1) and triAdept != -1: triAdept = -1
         if atkCA == 2 and triAdept != -1: triAdept = -1
@@ -488,6 +524,8 @@ def simulate_combat(attacker,defender):
         if atkrATK2 < 0: atkrATK2 = 0
 
         atkrATK2 += math.trunc(atkrATK2 * dmgBoost)
+
+        if atkSpecialTriggered: atkrATK2 += atkFixedSpDmgBoost
 
 
         #DEFENSIVE SPECIAL CHECK BY DEFENDER
@@ -798,6 +836,7 @@ class Special (Skill):
 
 
 folkvangr = Weapon("Fólkvangr","At start of turn, if unit's HP ≤ 50%, grants Atk+5 for 1 turn.",16,1,{"defiantAtk": 2})
+fensalir = Weapon("Fensalir","At start of turn, inflicts Atk-4 on foes within 2 spaces through their next actions.",16,1,{"threatDef":2})
 noatun = Weapon("Nóatún","If unit's HP ≤ 40%, unit can move to a space adjacent to any ally.",16,1,{"escRoute": 2})
 lordlyLance = Weapon("Lordly Lance", "Effective against armored foes.",16,1,{"effArm": 3})
 guardianAxe = Weapon("Guardian's Axe", "Accelerates Special trigger (cooldown count-1)",16,1,{"slaying": 1})
@@ -816,6 +855,8 @@ solitaryBlade = Weapon("Solitary Blade","Accelerates Special trigger (cooldown c
 purifyingBreath = Weapon("Purifying Breath","Slows Special trigger (cooldown count+1). Unit can counterattack regardless of foe's range. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",14,1,{"slaying":-1,"dragonCheck":0,"dCounter":0})
 tomeOfOrder = Weapon("Tome of Order","Effective against flying foes. Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"effFly":0,"colorlessAdv":0})
 devilAxe = Weapon("Devil Axe","Grants Atk/Spd/Def/Res+4 during combat, but if unit attacked, deals 4 damage to unit after combat.",16,1,{"atkBlow":2,"spdBlow":2,"defBlow":2,"resBlow":2,"atkStance":2,"spdStance":2,"defStance":2,"resStance":2,"atkOnlySelfDmg":4})
+forblaze = Weapon("Forblaze","At start of turn, inflicts Res-7 on foe on the enemy team with the highest Res through its next action.",14,2,{"atkChill":3})
+corvusTome = Weapon("Corvus Tome","Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"colorlessAdv":0})
 
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
 siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack",16,1,{"HPBoost":3,"FollowUpEph":0})
@@ -826,10 +867,12 @@ ragnell = Weapon("Ragnell","Unit can counterattack regardless of foe's range.",1
 
 nidhogg = Weapon("Nidhogg","Effective against flying foes. During combat, boosts unit's Atk/Spd/Def/Res by number of adjacent allies × 2.",14,2,{"effFly":0,"owlBoost":2})
 
+resoluteBlade = Weapon("Resolute Blade","Grants Atk+3. Deals +10 damage when Special triggers.",16,1,{"atkBoost":3,"spDmgAdd":10})
 #pointyDemonspanker = Weapon ("Falchion")
 
 #SPECIALS
 moonbow = Special("Moonbow","Treats foe's Def/Res as if reduced by 30% during combat.",{"defReduce":3},2)
+luna = Special("Luna","Treats foe's Def/Res as if reduced by 50% during combat.",{"defReduce":5},3)
 aether = Special("Aether","Treats foe's Def/Res as if reduced by 50% during combat. Restores HP = half of damage dealt.",{"defReduce":5,"healSelf":5},5)
 
 nightSky = Special("Night Sky","Boosts damage dealt by 50%.",{"dmgBoost":5,},3)
@@ -842,6 +885,7 @@ draconicAura = Special("Draconic Aura","Boosts damage by 30% of unit's Atk.",{"a
 dragonFang = Special("Dragon Fang","Boosts damage by 50% of unit's Atk.",{"atkBoostSp":5},4)
 
 bonfire = Special("Bonfire","Boosts damage by 50% of unit's Def.",{"defBoostSp":5},3)
+ignis = Special("Ignis","Boost damage by 80% of unit's Def.",{"defBoostSp":8},4)
 
 chillingWind = Special("Chilling Wind","Boosts damage by 50% of unit's Res.",{"resBoostSp":5},4)
 iceberg = Special("Iceberg","Boosts damage by 50% of unit's Res.",{"resBoostSp":5},3)
@@ -883,7 +927,7 @@ fortressRes3 = Skill("Fortress Res 3","Grants Res+5. Inflicts Atk-3.",{"resBoost
 waterBoost3 = Skill("Water Boost 3","At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.",{"waterBoost":3})
 
 heavyBlade3 = Skill("Heavy Blade 3","If unit's Atk > foe's Atk, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)",{"heavyBlade":3})
-
+flashingBlade3 = Skill("Flashing Blade 3","If unit's Spd > foe's Spd, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)",{"flashingBlade":3})
 # HIGHEST TRIANGLE ADEPT LEVEL USED
 # SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
 # HIGHEST LEVEL IS BASICALLY MAX
@@ -921,6 +965,7 @@ distanctCounter = Skill("Distant Counter", "Unit can counterattack regardless of
 
 swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"swordBreak":3})
 axeBreaker3 = Skill("Axebreaker 3","If unit's HP ≥ 50% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"axeBreak":3})
+gtomeBreaker3 = Skill("G Tomebreaker 3","If unit's HP ≥ 50% in combat against a green tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",{"gtomeBreak":3})
 vantage3 = Skill("Vantage 3","If unit's HP ≤ 75% and foe initiates combat, unit can counterattack before foe's first attack.",{"vantage":3})
 quickRiposte = Skill("Quick Riposte 3", "If unit's HP ≥ 70% and foe initiates combat, unit makes a guaranteed follow-up attack.",{"QRS":3})
 windsweep3 = Skill("Windsweep 3","If unit initiates combat, unit cannot make a follow-up attack. If unit’s Spd > foe’s Spd and foe uses sword, lance, axe, bow, dagger, or beast damage, foe cannot counterattack.",{"windsweep":3})
@@ -941,6 +986,7 @@ goadArmor = Skill("Goad Armor","Grants Atk/Spd+4 to armored allies within 2 spac
 #print(noatun)
 #print(deathBlow3)
 #print(guardianAxe)
+
 abel = Hero("Abel",39,33,32,25,25,"Lance",1,pantherLance,None,hp5,swordBreaker3,None)
 anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
 alfonse = Hero("Alfonse",43,35,25,32,22,"Sword",0,folkvangr,None,deathBlow3,None,None)
@@ -951,10 +997,13 @@ corrin = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,No
 eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBreaker3,None)
 hawkeye = Hero("Hawkeye",45,33,22,28,30,"Axe",0,guardianAxe,None,deathBlow3,None,None)
 hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,None)
+henry = Hero("Henry",45,23,22,32,25,"RTome",0,corvusTome,ignis,None,gtomeBreaker3,None)
+lilina = Hero("Lilina",35,37,25,19,31,"RTome",0,forblaze,moonbow,atk3,None,None)
 lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",0,solitaryBlade,glimmer,spd3,vantage3,None)
 nino = Hero("Nino",33,33,36,19,26,"GTome",0,irisTome,None,res3,None,None)
 nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
 roy = Hero("Roy",44,30,31,25,28,"Sword",0,bindingBlade,moonbow,triangleAdept3,None,None)
+sharena = Hero("Sharena",43,32,32,29,22,"Lance",0,fensalir,None,spd3,None,None)
 takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,None)
 
 ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmundEff,moonbow,deathBlow3,None,None)
@@ -971,8 +1020,8 @@ clive = Hero("Clive",45,33,25,32,19,"Lance",1,lordlyLance,escutcheon,def3,None,N
 
 innes = Hero("Innes",35,33,34,14,31,"CBow",0,nidhogg,iceberg,fortressRes3,cancelAffinity3,None)
 
-heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
-          cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst]
+#mia for kevin
+mia = Hero("Mia",38,32,40,28,25,"Sword",0,resoluteBlade,luna,flashingBlade3,vantage3,None)
 
 #print(str(len(heroes)) + " Heroes present. " + str(927-len(heroes)) + " remain to be added.")
 
@@ -1041,12 +1090,21 @@ lonqu.addSpecialLines("\"No hard feelings.\"",
                       "\"You're no challenge.\"",
                       "\"Give up.\"")
 
-r = simulate_combat(nowi,barst)
+mia.addSpecialLines("\"Today is a good day!\"",
+                    "\"You're on!\"",
+                    "\"Take that, foe!\"",
+                    "\"Clash with me!\"")
+
+r = simulate_combat(mia,sharena)
 print(r)
+
+heroes = [cordelia,alfonse,corrin,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
+          cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst,lilina,mia,henry]
+
 
 results = []
 #for hero in heroes:
-#    results.append(simulate_combat(innes,hero))
+#    results.append(simulate_combat(lilina,hero))
 #print(results)
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
