@@ -56,6 +56,9 @@ def simulate_combat(attacker,defender):
     atkDoFlashingBladeCheck = False
     defDoFlashingBladeCheck = False
 
+    atkAbsorb = False
+    defAbsorb = False
+
     atkFixedSpDmgBoost = 0
     defFixedSpDmgBoost = 0
 
@@ -102,6 +105,8 @@ def simulate_combat(attacker,defender):
             atkDoHeavyBladeCheck = True
         if key == "flashingBlade":
             atkDoFlashingBladeCheck = True
+        if key == "selfDmg":
+            atkSelfDmg += atkSkills[key]
         if key == "atkOnlySelfDmg":
             atkDoSelfDmgCheck = True
         if key == "atkOnlyOtherDmg":
@@ -147,6 +152,9 @@ def simulate_combat(attacker,defender):
             armEffA = True
         if key == "effDragon":
             drgEffA = True
+
+        if key == "absorb":
+            atkAbsorb = True
 
         if key == "swordBreak" and defender.getWeaponType() == "Sword":
             atkFollowUps += 1
@@ -248,8 +256,14 @@ def simulate_combat(attacker,defender):
             armEffD = True
         if key == "effDragon":
             drgEffD = True
+        if key == "absorb":
+            defAbsorb = True
         if key == "atkOnlySelfDmg":
             defDoSelfDmgCheck = True
+        if key == "atkOnlyOtherDmg":
+            defDoOtherDmgCheck = True
+        if key == "selfDmg":
+            defSelfDmg += defSkills[key]
 
         if key == "QRW" or key == "QRS":
             defFollowUps += 1
@@ -408,6 +422,7 @@ def simulate_combat(attacker,defender):
 
 
 
+
     if atkSpecialCounter == 0 and ASpecialType == "Offense":
         print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
         print(attacker.getSpecialLine())
@@ -468,6 +483,7 @@ def simulate_combat(attacker,defender):
     if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive and not cannotCounter:
 
         if defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
+        if defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
 
         dmgBoost = 0
         extraDmg = 0
@@ -490,7 +506,7 @@ def simulate_combat(attacker,defender):
         defrATK1 = defStats[1] - atkStats[3+x] + extraDmg
         if defrATK1 < 0: defrATK1 = 0
         defrATK1 += math.trunc(defrATK1 * dmgBoost)
-
+        if defender.getWeaponType() == "Staff": defrATK1 = math.trunc(defrATK1 * 0.5)
 
         atkStats[0] = atkStats[0] - defrATK1
         print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK1) + " damage.")
@@ -566,6 +582,7 @@ def simulate_combat(attacker,defender):
 
         if atkSpecialTriggered: atkrATK2 += atkFixedSpDmgBoost
 
+        if attacker.getWeaponType() == "Staff": atkrATK2 = math.trunc(atkrATK2 * 0.5)
 
         #DEFENSIVE SPECIAL CHECK BY DEFENDER
         if defSpecialCounter == 0 and DSpecialType == "Defense" and attacker.getRange() == 1:
@@ -724,9 +741,9 @@ def simulate_combat(attacker,defender):
                 atkAlive = False
                 print(attacker.getName() + " falls.")
 
-    if atkAlive and atkSelfDmg != 0:
-        atkStats[0] -= atkSelfDmg
-        print(attacker.getName() + " takes " + str(atkSelfDmg) + " damage after combat.")
+    if atkAlive and atkSelfDmg != 0 or defOtherDmg != 0:
+        atkStats[0] -= (atkSelfDmg + defOtherDmg)
+        print(attacker.getName() + " takes " + str(atkSelfDmg + defOtherDmg) + " damage after combat.")
         if atkStats[0] < 1: atkStats[0] = 1
 
 
@@ -898,7 +915,15 @@ forblaze = Weapon("Forblaze","At start of turn, inflicts Res-7 on foe on the ene
 corvusTome = Weapon("Corvus Tome","Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"colorlessAdv":0})
 tacticalBolt = Weapon("Tactical Bolt","Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"colorlessAdv":0})
 arthurAxe = Weapon("Arthur's Axe","If a bonus granted by a skill like Rally or Hone is active on unit, grants Atk/Spd/Def/Res+3 during combat.",16,1,{"buffGrantsAtk":3,"buffGrantsSpd":3,"buffGrantsDef":3,"buffGrantsRes":3})
+assault = Weapon("Assault","",10,2,{})
+pain = Weapon("Pain","Deals 10 damage to target after combat.",3,2,{"atkOnlyOtherDmg":10})
 painPlus = Weapon("Pain+","Deals 10 damage to target and foes within 2 spaces of target after combat.",10,2,{"atkOnlyOtherDmg":10,"savageBlow":4.5})
+absorb = Weapon("Absorb","Restores HP = 50% of damage dealt.",3,2,{"absorb":0})
+absorbPlus = Weapon("Absorb+","Restores HP = 50% of damage dealt. After combat, if unit attacked, restores 7 HP to allies within 2 spaces of unit.",10,2,{"absorb":0})
+sapphireLance = Weapon("Sapphire Lance","If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.",8,1,{"triangleAdeptW":3})
+sapphireLancePlus = Weapon("Sapphire Lance+","If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.",12,1,{"triangleAdeptW":3})
+axeOfVirility = Weapon("Axe of Virility","Effective against armored foes.",16,1,{"effArm":0})
+siegfried = Weapon("Siegfried","Unit can counterattack regardless of foe's range.",16,1,{"dCounter":0})
 
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
 siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack",16,1,{"HPBoost":3,"FollowUpEph":0})
@@ -965,6 +990,7 @@ fortressRes1 = Skill("Fortress Res 1","Grants Res+3. Inflicts Atk-3.",{"resBoost
 fortressRes2 = Skill("Fortress Res 2","Grants Res+4. Inflicts Atk-3.",{"resBoost":4,"atkBoost":-3})
 fortressRes3 = Skill("Fortress Res 3","Grants Res+5. Inflicts Atk-3.",{"resBoost":5,"atkBoost":-3})
 
+fury3 = Skill("Fury 3","Grants Atk/Spd/Def/Res+3. After combat, deals 6 damage to unit.",{"atkBoost":3,"spdBoost":3,"defBoost":3,"resBoost":3,"selfDmg":6})
 
 waterBoost3 = Skill("Water Boost 3","At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.",{"waterBoost":3})
 
@@ -1035,7 +1061,9 @@ anna = Hero("Anna",41,29,38,22,28,"Axe",0,noatun,astra,None,vantage3,None)
 alfonse = Hero("Alfonse",43,35,25,32,22,"Sword",0,folkvangr,None,deathBlow3,None,None)
 arthur = Hero("Arthur",43,32,29,30,24,"Axe",0,arthurAxe,None,hp5,lanceBreaker3,None)
 azama = Hero("Azama",43,21,26,32,25,"Staff",0,painPlus,None,None,None,None)
+azura = Hero("Azura",36,31,33,21,28,"Lance",0,sapphireLancePlus,None,spd3,None,None)
 barst = Hero("Barst",46,33,32,30,17,"Axe",0,devilAxe,None,None,None,None)
+bartre = Hero("Bartre",49,36,25,33,13,"Axe",0,axeOfVirility,None,fury3,None,None)
 cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
 cordelia = Hero("Cordelia",40,35,35,22,25,"Lance",2,cordeliaLance,None,triangleAdept3,None,None)
 corrinF = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,None,None)
@@ -1049,9 +1077,10 @@ nino = Hero("Nino",33,33,36,19,26,"GTome",0,irisTome,None,res3,None,None)
 nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
 robinM = Hero("Robin",40,29,29,29,22,"BTome",0,tacticalBolt,bonfire,None,None,None)
 roy = Hero("Roy",44,30,31,25,28,"Sword",0,bindingBlade,moonbow,triangleAdept3,None,None)
+serra = Hero("Serra",33,30,31,21,33,"Staff",0,absorbPlus,None,None,None,None)
 sharena = Hero("Sharena",43,32,32,29,22,"Lance",0,fensalir,None,spd3,None,None)
 takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,None)
-
+xander = Hero("Xander",44,32,24,37,17,"Sword",1,siegfried,None,armoredBlow3,None,None)
 ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmundEff,moonbow,deathBlow3,None,None)
 julia = Hero("Julia",38,35,26,17,32,"GTome",0,naga,dragonFang,res3,None,None)
 
@@ -1140,12 +1169,12 @@ mia.addSpecialLines("\"Today is a good day!\"",
                     "\"Take that, foe!\"",
                     "\"Clash with me!\"")
 
-r = simulate_combat(azama,sharena)
+r = simulate_combat(serra,hawkeye)
 print(r)
 
 heroes = [cordelia,alfonse,corrinF,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
           cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst,lilina,mia,henry,robinM,
-          arthur]
+          arthur,azama,azura,bartre,xander]
 
 
 results = []
