@@ -56,9 +56,6 @@ def simulate_combat(attacker,defender):
     atkDoFlashingBladeCheck = False
     defDoFlashingBladeCheck = False
 
-    atkAbsorb = False
-    defAbsorb = False
-
     atkFixedSpDmgBoost = 0
     defFixedSpDmgBoost = 0
 
@@ -70,6 +67,9 @@ def simulate_combat(attacker,defender):
     defSelfDmg = 0
     atkOtherDmg = 0
     defOtherDmg = 0
+
+    atkAbsorb = False
+    defAbsorb = False
 
     ASpDefReduce = 0
     ASpDmgIncrease = 0
@@ -436,6 +436,7 @@ def simulate_combat(attacker,defender):
     if atkrATK1 < 0: atkrATK1 = 0
     if attacker.getWeaponType() == "Staff": atkrATK1 = math.trunc(atkrATK1 * 0.5)
 
+
     defStats[0] = defStats[0] - atkrATK1
     print(attacker.getName() + " attacks " + defender.getName() + " for " + str(atkrATK1) + " damage.")
 
@@ -449,11 +450,17 @@ def simulate_combat(attacker,defender):
     newHPA = atkStats[0]
     newHPD = defStats[0]
 
-    atkStats = atkInitStats
-    defStats = defInitStats
+    atkStats = atkInitStats[:]
+    defStats = defInitStats[:]
 
     atkStats[0] = newHPA
     defStats[0] = newHPD
+
+    if atkAbsorb and atkStats[0] < atkInitStats[0]:
+        amountHealed = math.trunc(atkrATK1 * 0.5)
+        atkStats[0] += amountHealed
+        print(attacker.getName() + " absorbs " + str(amountHealed) + " HP.")
+        if atkStats[0] > atkInitStats[0]: atkStats[0] = atkInitStats[0]
 
     if defStats[0] <= 0:
         defStats[0] = 0
@@ -508,6 +515,7 @@ def simulate_combat(attacker,defender):
         defrATK1 += math.trunc(defrATK1 * dmgBoost)
         if defender.getWeaponType() == "Staff": defrATK1 = math.trunc(defrATK1 * 0.5)
 
+
         atkStats[0] = atkStats[0] - defrATK1
         print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK1) + " damage.")
 
@@ -522,11 +530,19 @@ def simulate_combat(attacker,defender):
         newHPA = atkStats[0]
         newHPD = defStats[0]
 
-        atkStats = atkInitStats
-        defStats = defInitStats
+        atkStats = atkInitStats[:]
+        defStats = defInitStats[:]
 
         atkStats[0] = newHPA
         defStats[0] = newHPD
+
+        print(atkStats)
+
+        if defAbsorb:
+            amountHealed = math.trunc(defrATK1 * 0.5)
+            defStats[0] += amountHealed
+            print(defender.getName() + " absorbs " + str(amountHealed) + " HP.")
+            if defStats[0] > defInitStats[0]: defStats[0] = defInitStats[0]
 
         if atkStats[0] <= 0:
             atkStats[0] = 0
@@ -584,6 +600,7 @@ def simulate_combat(attacker,defender):
 
         if attacker.getWeaponType() == "Staff": atkrATK2 = math.trunc(atkrATK2 * 0.5)
 
+
         #DEFENSIVE SPECIAL CHECK BY DEFENDER
         if defSpecialCounter == 0 and DSpecialType == "Defense" and attacker.getRange() == 1:
             print(defender.getName() + " procs " + defender.getSpName() + ".")
@@ -592,6 +609,7 @@ def simulate_combat(attacker,defender):
                 if key == "closeShield":
                     defSpecialTriggered = True
                     atkrATK2 -= math.trunc(atkrATK2 * 0.10 * defSpEffects["closeShield"])
+
 
 
         defStats[0] = defStats[0] - atkrATK2
@@ -610,11 +628,19 @@ def simulate_combat(attacker,defender):
         newHPA = atkStats[0]
         newHPD = defStats[0]
 
-        atkStats = atkInitStats
-        defStats = defInitStats
+        atkStats = atkInitStats[:]
+        defStats = defInitStats[:]
 
         atkStats[0] = newHPA
         defStats[0] = newHPD
+
+
+
+        if atkAbsorb and atkStats[0] < atkInitStats[0]:
+            amountHealed = math.trunc(atkrATK2 * 0.5)
+            atkStats[0] += amountHealed
+            print(attacker.getName() + " absorbs " + str(amountHealed) + " HP.")
+            if atkStats[0] > atkInitStats[0]: atkStats[0] = atkInitStats[0]
 
         if defStats[0] <= 0:
             defStats[0] = 0
@@ -664,8 +690,8 @@ def simulate_combat(attacker,defender):
             newHPA = atkStats[0]
             newHPD = defStats[0]
 
-            atkStats = atkInitStats
-            defStats = defInitStats
+            atkStats = atkInitStats[:]
+            defStats = defInitStats[:]
 
             atkStats[0] = newHPA
             defStats[0] = newHPD
@@ -725,6 +751,12 @@ def simulate_combat(attacker,defender):
 
         atkStats[0] = newHPA
         defStats[0] = newHPD
+
+        if defAbsorb:
+            amountHealed = math.trunc(defrATK1 * 0.5)
+            defStats[0] += amountHealed
+            print(defender.getName() + " absorbs " + str(amountHealed) + " HP.")
+            if defStats[0] > defInitStats[0]: defStats[0] = defInitStats[0]
 
         if atkStats[0] <= 0:
             atkStats[0] = 0
@@ -915,15 +947,19 @@ forblaze = Weapon("Forblaze","At start of turn, inflicts Res-7 on foe on the ene
 corvusTome = Weapon("Corvus Tome","Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"colorlessAdv":0})
 tacticalBolt = Weapon("Tactical Bolt","Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.",14,2,{"colorlessAdv":0})
 arthurAxe = Weapon("Arthur's Axe","If a bonus granted by a skill like Rally or Hone is active on unit, grants Atk/Spd/Def/Res+3 during combat.",16,1,{"buffGrantsAtk":3,"buffGrantsSpd":3,"buffGrantsDef":3,"buffGrantsRes":3})
+axeOfVirility = Weapon("Axe of Virility","Effective against armored foes.",16,1,{"effArm":0})
+siegfried = Weapon("Siegfried","Unit can counterattack regardless of foe's range.",16,1,{"dCounter":0})
+
 assault = Weapon("Assault","",10,2,{})
 pain = Weapon("Pain","Deals 10 damage to target after combat.",3,2,{"atkOnlyOtherDmg":10})
 painPlus = Weapon("Pain+","Deals 10 damage to target and foes within 2 spaces of target after combat.",10,2,{"atkOnlyOtherDmg":10,"savageBlow":4.5})
 absorb = Weapon("Absorb","Restores HP = 50% of damage dealt.",3,2,{"absorb":0})
-absorbPlus = Weapon("Absorb+","Restores HP = 50% of damage dealt. After combat, if unit attacked, restores 7 HP to allies within 2 spaces of unit.",10,2,{"absorb":0})
+absorbPlus = Weapon("Absorb+","Restores HP = 50% of damage dealt. After combat, if unit attacked, restores 7 HP to allies within 2 spaces of unit.",7,2,{"absorb":0})
+
 sapphireLance = Weapon("Sapphire Lance","If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.",8,1,{"triangleAdeptW":3})
 sapphireLancePlus = Weapon("Sapphire Lance+","If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.",12,1,{"triangleAdeptW":3})
-axeOfVirility = Weapon("Axe of Virility","Effective against armored foes.",16,1,{"effArm":0})
-siegfried = Weapon("Siegfried","Unit can counterattack regardless of foe's range.",16,1,{"dCounter":0})
+
+
 
 siegmund = Weapon("Siegmund","At start of turn, grants Atk+3 to adjacent allies for 1 turn.",16,1,{"honeAtk":2})
 siegmundEff = Weapon("Siegmund","At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack",16,1,{"HPBoost":3,"FollowUpEph":0})
@@ -1169,7 +1205,7 @@ mia.addSpecialLines("\"Today is a good day!\"",
                     "\"Take that, foe!\"",
                     "\"Clash with me!\"")
 
-r = simulate_combat(serra,hawkeye)
+r = simulate_combat(serra,henry)
 print(r)
 
 heroes = [cordelia,alfonse,corrinF,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
