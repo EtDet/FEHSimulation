@@ -154,16 +154,20 @@ class Map:
     def placeUnits(self,playerUnits,enemyUnits):
 
         self.currentTiles = [{}, {}]
+        self.playerUnits = playerUnits
+        self.enemyUnits = enemyUnits
 
         i = 0
         while i < len(self.startingTiles[0]):
             self.startingTiles[0][i].setHero(playerUnits[i])
             self.currentTiles[0].update({playerUnits[i].getName(): self.startingTiles[0][i]})
+            playerUnits[i].setTile(self.startingTiles[0][i])
             i += 1
         i = 0
         while i < len(self.startingTiles[1]):
             self.startingTiles[1][i].setHero(enemyUnits[i])
             self.currentTiles[1].update({enemyUnits[i].getName(): self.startingTiles[1][i]})
+            enemyUnits[i].setTile(self.startingTiles[1][i])
             i += 1
 
         #print(self.currentTiles)
@@ -177,16 +181,55 @@ class Map:
     def getCurrentTiles(self):
         return self.currentTiles
 
+
+    def getNextUnits(self,boolean):
+        if boolean: return self.enemyUnits
+        else: return self.playerUnits
+
+
 class State:
-    def __init__(self,prev,map,phase):
+    def __init__(self,prev,map,phase,leftToAct):
         self.prev = prev
         self.map = map
         self.phase = phase # false - player, true - enemy
+        self.leftToAct = leftToAct[:]
+
+    def doMove(self,unit,newTile):
+        oldTile = unit.getTile()
+        oldTile.setHero(None)
+        unit.setTile(newTile)
+        newTile.setHero(unit)
+
+        i = 0
+
+        while i < len(self.leftToAct):
+            if self.leftToAct[i] == unit:
+                self.leftToAct.pop(i)
+            i += 1
+        if len(self.leftToAct) == 0:
+            next = State(self,self.map,not self.phase,self.map.getNextUnits(not self.phase))
+        else :
+            next = State(self,self.map,self.phase,self.leftToAct)
 
 
-    def getPossibleMoves(self):
 
+    def getPossibleMoves(self,unit):
+        move = unit.getMovement()
+        tiles = []
+        if move == 0 or move == 2:
+            tiles = unit.getTile().getTilesWithinNSpaces(2)
+        if move == 1:
+            tiles = unit.getTile().getTilesWithinNSpaces(3)
+        if move == 3:
+            tiles = unit.getTile().getTilesWithinNSpaces(1)
 
+        i = 0
+        while i < len(tiles):
+            if tiles[i].getHero() != None:
+                tiles.pop(i)
+                if i != 0: i -= 1
+            i += 1
+        tiles.append(unit.getTile())
 
         # 3 possible moves for each unit at a given state
         # do nothing
@@ -194,6 +237,9 @@ class State:
         # support
 
         # we'll account for duo skills/pair up/canto later
+        return tiles
+
+    def nextStates(self, unit):
         return None
 
 units = HeroDirectory().getHeroes()
@@ -204,15 +250,17 @@ startingTilesEnemy = [(0,1),(0,2),(0,3),(0,4)]
 map = Map(startingTilesPlayer,startingTilesEnemy)
 map.placeUnits(playerUnits,enemyUnits)
 
-startState = State(-1,map,False)
-
+startState = State(-1,map,False,playerUnits)
+moves = startState.getPossibleMoves(ephraim)
+startState.doMove(ephraim,moves[0])
 
 daMap = map.getMap()
 
 for x in daMap:
     for y in x:
-
-        print(y.getCoords()," ",end='')
+        if y.getHero() != None: print(y.getHero().getName(),end='')
+        else: print(None,end='')
+        #print(y.getCoords()," ",end='')
     print()
 
 
@@ -226,4 +274,4 @@ print()
 
 print(daMap[0][2].getTilesWithinNSpaces(2))
 print(daMap[0][2].isWithinNTiles(nowi,2))
-# current issue - idk
+# current issue - control which move is next
