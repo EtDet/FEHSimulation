@@ -1,6 +1,9 @@
 import math
 import random
 
+def startOfTurn(attackers,defenders):
+    return 7
+
 def simulate_combat(attacker,defender):
     atkSkills = attacker.getSkills()
     atkStats = attacker.getStats()
@@ -30,6 +33,8 @@ def simulate_combat(attacker,defender):
     colorlessAdvAtk = False
     colorlessAdvDef = False
 
+    cavEffA = False
+    cavEffD = False
     flyEffA = False
     flyEffD = False
     armEffA = False
@@ -146,6 +151,8 @@ def simulate_combat(attacker,defender):
         if key == "BraveAW" or key == "BraveAS" or key == "BraveBW":
             braveATKR = True
 
+        if key == "effCav":
+            cavEffA = True
         if key == "effFly":
             flyEffA = True
         if key == "effArm":
@@ -174,6 +181,10 @@ def simulate_combat(attacker,defender):
         if key == "cancelTA":
             atkCA = atkSkills[key]
 
+
+        if key == "healSelf":
+            ASpecialType = "Offense"
+            atkSpEffects.update({"healSelf":atkSkills[key]})
         if key == "defReduce":
             ASpecialType = "Offense"
             ASpDefReduce = atkSkills[key]
@@ -250,6 +261,8 @@ def simulate_combat(attacker,defender):
         if key == "BraveDW" or key == "BraveBW":
             braveDEFR = True
 
+        if key == "effCav":
+            cavEffD = True
         if key == "effFly":
             flyEffD = True
         if key == "effArm":
@@ -286,6 +299,9 @@ def simulate_combat(attacker,defender):
         if key == "cancelTA":
             defCA = defSkills[key]
 
+        if key == "healSelf":
+            DSpecialType = "Offense"
+            defSpEffects.update({"healSelf":defSkills[key]})
         if key == "defReduce":
             DSpecialType = "Offense"
             DSpDefReduce = defSkills[key]
@@ -327,6 +343,11 @@ def simulate_combat(attacker,defender):
         cannotCounter = True
 
     # EFFECTIVENESS CHECK
+
+    if cavEffA and defender.getMovement() == 1:
+        atkStats[1] += math.trunc(atkStats[1] * 0.5)
+    if cavEffD and attacker.getMovement() == 1:
+        defStats[1] += math.trunc(defStats[1] * 0.5)
 
     if flyEffA and defender.getMovement() == 2:
         atkStats[1] += math.trunc(atkStats[1] * 0.5)
@@ -406,6 +427,7 @@ def simulate_combat(attacker,defender):
     atkAlive = True
     defAlive = True
 
+    #define in method?
     atkSpecialTriggered = False
     defSpecialTriggered = False
 
@@ -417,11 +439,36 @@ def simulate_combat(attacker,defender):
     atkInitStats = atkStats[:]
     defInitStats = defStats[:]
 
+
+
     if atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
     if atkDoOtherDmgCheck == True: atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
 
+    # if attacker can attack *always true, initiator always attacks in combat at least once
+    # under the assumption that they survive any hits given by the defender*
 
-
+    # attacker - unit attacking
+    # defender - unit defending
+    # atkStats[] - stats of attacker
+    # defStats[]
+    # atkInitStats[] - base stats of attacker (base hp, stats before bonfire boost (wait do we need to modify that?))
+    # defInitStats[]
+    # atkSpecialCounter - current special cooldown (pointer perhaps?)
+    # defSpecialCounter
+    # permASC - permanent special counter
+    # permDSC
+    # ASpecialType - Attacker, Defender, AOE, Staff, Other Weird Gimmicky Thing
+    # DSpecialType
+    # atkSpecialEffects - List of effects (dmgBoost, resBoost, selfHeal)
+    # defSpecialEffects
+    # atkSCCB - (Heavy Blade, Guard, etc. effects)
+    # defSCCB
+    # atkFixedSpDmgBoost (wo dao, etc.)
+    # defFixedSpDmgBoost
+    # atkAbsorb (absorb staff skill)
+    # defAbsorb
+    # braveATKR (brave weapons)
+    # braveDEFR
 
     if atkSpecialCounter == 0 and ASpecialType == "Offense":
         print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
@@ -567,12 +614,16 @@ def simulate_combat(attacker,defender):
     if atkFollowUps > 0 and atkAlive and defAlive:
         dmgBoost = 0
         extraDmg = 0
+        selfHeal = False
 
         #OFFENSIVE SPECIAL CHECK BY ATTACKER
         if atkSpecialCounter == 0 and ASpecialType == "Offense":
             print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
             print(attacker.getSpecialLine())
             for key in atkSpEffects:
+                if key == "healSelf":
+                    atkSpecialTriggered = True
+                    selfHeal = True
                 if key == "defReduce":
                     atkSpecialTriggered = True
                     defStats[3] -= math.trunc(defStats[3] * .10 * atkSpEffects["defReduce"])
@@ -622,6 +673,7 @@ def simulate_combat(attacker,defender):
         if atkSpecialTriggered: atkSpecialCounter = permASC
         if defSpecialTriggered: defSpecialCounter = permDSC
 
+
         atkSpecialTriggered = False
         defSpecialTriggered = False
 
@@ -634,13 +686,16 @@ def simulate_combat(attacker,defender):
         atkStats[0] = newHPA
         defStats[0] = newHPD
 
-
-
-        if atkAbsorb and atkStats[0] < atkInitStats[0]:
-            amountHealed = math.trunc(atkrATK2 * 0.5)
+        if (atkAbsorb or selfHeal) and atkStats[0] < atkInitStats[0]:
+            # need to consider case where special defeats foe, init hp-dmg is used
+            if atkAbsorb: amountHealed = math.trunc(atkrATK2 * 0.5)
+            if selfHeal: amountHealed = math.trunc(atkrATK2 * 0.1 * atkSpEffects["healSelf"])
             atkStats[0] += amountHealed
-            print(attacker.getName() + " absorbs " + str(amountHealed) + " HP.")
+            if atkAbsorb: print(attacker.getName() + " absorbs " + str(amountHealed) + " HP.")
+            if selfHeal: print(attacker.getName() + " restores " + str(amountHealed) + " HP.")
             if atkStats[0] > atkInitStats[0]: atkStats[0] = atkInitStats[0]
+
+        selfHeal = False
 
         if defStats[0] <= 0:
             defStats[0] = 0
@@ -792,6 +847,7 @@ class Hero:
 
         # base unit info
         self.name = name
+        self.intName = name
         self.hp=hp
         self.at=at
         self.sp=sp
@@ -935,6 +991,7 @@ gloomBreath = Weapon("Gloom Breath", "At start of turn, inflicts Atk/Spd-7 on fo
 cordeliaLance = Weapon("Cordelia's Lance","Inflicts Spd-2. If unit initiates combat, unit attacks twice.",10,1,{"spdBoost": -2,"BraveAW":1})
 armads = Weapon("Armads","If unit's HP ≥ 80% and foe initiates combat, unit makes a guaranteed follow-up attack.",16,1,{"QRW":2})
 pantherLance = Weapon("Panther Lance","During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)",16,1,{"localBoost2Atk":2,"localBoost2Def":2})
+bullBlade = Weapon("Bull Blade","During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)",16,1,{"localBoost2Atk":2,"localBoost2Def":2})
 darkRoyalSpear = Weapon("Dark Royal Spear","If foe initiates combat or if foe's HP = 100% at start of combat, grants Atk/Def/Res+5 to unit during combat.",16,1,{"berkutBoost":5})
 chercheAxe = Weapon("Cherche's Axe","Inflicts Spd-5. If unit initiates combat, unit attacks twice.",11,1,{"spdBoost": -5,"BraveAW":1})
 durandal = Weapon("Durandal","If unit initiates combat, grants Atk+4 during combat.",16,1,{"atkBlow":2})
@@ -949,6 +1006,12 @@ tacticalBolt = Weapon("Tactical Bolt","Grants weapon-triangle advantage against 
 arthurAxe = Weapon("Arthur's Axe","If a bonus granted by a skill like Rally or Hone is active on unit, grants Atk/Spd/Def/Res+3 during combat.",16,1,{"buffGrantsAtk":3,"buffGrantsSpd":3,"buffGrantsDef":3,"buffGrantsRes":3})
 axeOfVirility = Weapon("Axe of Virility","Effective against armored foes.",16,1,{"effArm":0})
 siegfried = Weapon("Siegfried","Unit can counterattack regardless of foe's range.",16,1,{"dCounter":0})
+berukaAxe = Weapon("Beruka's Axe","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
+wingSword = Weapon("Wing Sword","Effective against armored and cavalry foes.",16,1,{"effArm":0,"effCav":0})
+camillaAxe = Weapon("Camilla's Axe","If unit is within 2 spaces of a cavalry or flying ally, grants Atk/Spd+4 during combat.",16,1,{"camillaBoost":0})
+whitewingLance = Weapon("Whitewing Lance","Accelerates Special trigger (cooldown count-1).",16,1,{"slaying":1})
+marthFalchion = Weapon("Falchion","Effective against dragon foes. At the start of every third turn, restores 10 HP.",16,1,{"effDragon":0,"recover":3})
+awkFalchion = Weapon("Falchion","Effective against dragon foes. At the start of every third turn, restores 10 HP.",16,1,{"effDragon":0,"recover":3})
 
 assault = Weapon("Assault","",10,2,{})
 pain = Weapon("Pain","Deals 10 damage to target after combat.",3,2,{"atkOnlyOtherDmg":10})
@@ -974,6 +1037,9 @@ resoluteBlade = Weapon("Resolute Blade","Grants Atk+3. Deals +10 damage when Spe
 #pointyDemonspanker = Weapon ("Falchion")
 
 #SPECIALS
+noontime = Special("Noontime","Restores HP = 30% of damage dealt.",{"healSelf":3},2)
+sol = Special("Sol","Restores HP = 50% of damage dealt.",{"healSelf":5},3)
+
 moonbow = Special("Moonbow","Treats foe's Def/Res as if reduced by 30% during combat.",{"defReduce":3},2)
 luna = Special("Luna","Treats foe's Def/Res as if reduced by 50% during combat.",{"defReduce":5},3)
 aether = Special("Aether","Treats foe's Def/Res as if reduced by 50% during combat. Restores HP = half of damage dealt.",{"defReduce":5,"healSelf":5},5)
@@ -1100,15 +1166,23 @@ azama = Hero("Azama",43,21,26,32,25,"Staff",0,painPlus,None,None,None,None)
 azura = Hero("Azura",36,31,33,21,28,"Lance",0,sapphireLancePlus,None,spd3,None,None)
 barst = Hero("Barst",46,33,32,30,17,"Axe",0,devilAxe,None,None,None,None)
 bartre = Hero("Bartre",49,36,25,33,13,"Axe",0,axeOfVirility,None,fury3,None,None)
+beruka = Hero("Beruka",46,29,23,37,22,"Axe",2,berukaAxe,glimmer,None,None,None)
+caeda = Hero("Caeda",36,25,37,24,34,"Sword",2,wingSword,None,dartingBlow3,None,None)
+cain = Hero("Cain",42,32,32,27,21,"Sword",1,bullBlade,None,None,None,None)
+camilla = Hero("Camilla",37,30,32,28,31,"Axe",2,camillaAxe,draconicAura,dartingBlow3,None,None)
+catria = Hero("Catria",39,31,34,29,25,"Lance",2,whitewingLance,luna,armoredBlow3,None,None)
+cecilia = Hero("Cecilia",36,32,25,22,29,"GTome",1,tomeOfOrder,None,atk3,None,None)
 cherche = Hero("Cherche",46,38,25,32,16,"Axe",2,chercheAxe,None,atk3,None,None)
+chrom = Hero("Chrom",47,37,25,31,17,"Sword",0,awkFalchion,aether,None,None,None)
 cordelia = Hero("Cordelia",40,35,35,22,25,"Lance",2,cordeliaLance,None,triangleAdept3,None,None)
 corrinF = Hero("Corrin",41,27,34,34,21,"BDragon",0,gloomBreath,None,deathBlow3,None,None)
 eliwood = Hero("Eliwood",39,31,30,23,32,"Sword",1,durandal,sacredCowl,None,axeBreaker3,None)
 hawkeye = Hero("Hawkeye",45,33,22,28,30,"Axe",0,guardianAxe,None,deathBlow3,None,None)
-hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,None)
+hector = Hero("Hector",52,36,24,37,19,"Axe",3,armads,pavise,distanctCounter,None,goadArmor)
 henry = Hero("Henry",45,23,22,32,25,"RTome",0,corvusTome,ignis,None,gtomeBreaker3,None)
 lilina = Hero("Lilina",35,37,25,19,31,"RTome",0,forblaze,moonbow,atk3,None,None)
 lonqu = Hero("Lon'qu",45,29,39,22,22,"Sword",0,solitaryBlade,glimmer,spd3,vantage3,None)
+marth = Hero("Marth",41,31,34,29,23,"Sword",0,marthFalchion,draconicAura,fury3,quickRiposte,None)
 nino = Hero("Nino",33,33,36,19,26,"GTome",0,irisTome,None,res3,None,None)
 nowi = Hero("Nowi",45,34,27,30,27,"BDragon",0,purifyingBreath,None,def3,None,None)
 robinM = Hero("Robin",40,29,29,29,22,"BTome",0,tacticalBolt,bonfire,None,None,None)
@@ -1116,11 +1190,19 @@ roy = Hero("Roy",44,30,31,25,28,"Sword",0,bindingBlade,moonbow,triangleAdept3,No
 serra = Hero("Serra",33,30,31,21,33,"Staff",0,absorbPlus,None,None,None,None)
 sharena = Hero("Sharena",43,32,32,29,22,"Lance",0,fensalir,None,spd3,None,None)
 takumi = Hero("Takumi",40,32,33,25,18,"CBow",0,fujinYumi,None,closeCounter,None,None)
-xander = Hero("Xander",44,32,24,37,17,"Sword",1,siegfried,None,armoredBlow3,None,None)
+xander = Hero("Xander",44,32,24,37,17,"Sword",1,siegfried,noontime,armoredBlow3,axeBreaker3,None)
+
+eirika = Hero("Eirika",40,30,34,27,23,"Sword",0,None,None,None,None,None)
 ephraim = Hero("Ephraim",45,35,25,32,20,"Lance",0,siegmundEff,moonbow,deathBlow3,None,None)
+seliph = Hero("Seliph",40,30,30,30,20,"Sword",0,None,None,None,None,None)
 julia = Hero("Julia",38,35,26,17,32,"GTome",0,naga,dragonFang,res3,None,None)
 
 klein = Hero("Klein",40,31,33,20,24,"CBow",0,argentBow,glacies,deathBlow3,quickRiposte,None)
+sanaki = Hero("Sanaki",30,30,30,20,20,"RTome",0,None,None,None,None,None)
+#NOT YET HE'S GONNA RUIN EVERYTHING reinhardt = Hero("")
+olwen = Hero("Olwen",35,30,30,20,15,"BTome",1,None,None,None,None,None)
+eldigan = Hero("Eldigan",40,30,25,30,15,"Sword",1,None,None,None,None,None)
+lachesis = Hero("Lachesis",30,30,30,15,20,"Staff",0,None,None,None,None,None)
 
 alm = Hero("Alm",45,33,30,28,22,"Sword",0,almFalchion,draconicAura,atk3,windsweep3,None)
 
@@ -1131,7 +1213,7 @@ clive = Hero("Clive",45,33,25,32,19,"Lance",1,lordlyLance,escutcheon,def3,None,N
 
 innes = Hero("Innes",35,33,34,14,31,"CBow",0,nidhogg,iceberg,fortressRes3,cancelAffinity3,None)
 
-mia = Hero("Mia",38,32,40,28,25,"Sword",0,resoluteBlade,draconicAura,flashingBlade3,vantage3,None)
+mia = Hero("Mia",38,32,40,28,25,"Sword",0,resoluteBlade,noontime,flashingBlade3,vantage3,None)
 
 #print(str(len(heroes)) + " Heroes present. " + str(927-len(heroes)) + " remain to be added.")
 
@@ -1205,17 +1287,40 @@ mia.addSpecialLines("\"Today is a good day!\"",
                     "\"Take that, foe!\"",
                     "\"Clash with me!\"")
 
-r = simulate_combat(serra,henry)
-print(r)
+xander.addSpecialLines("\"Right where I want you!\"",
+                       "\"Prepare yourself!\"",
+                       "\"Down on your knees!\"",
+                       "\"You're going home—in pieces!\"")
 
-heroes = [cordelia,alfonse,corrinF,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
-          cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst,lilina,mia,henry,robinM,
-          arthur,azama,azura,bartre,xander]
+catria.addSpecialLines("\"Here I go!\"",
+                       "\"Finishing Blow!\"",
+                       "\"This ought to do it!\"",
+                       "\"No matter the cost!\"")
+
+playerUnits = [marth,robinM,takumi,ephraim]
+enemyUnits = [nowi,alm,hector,bartre]
+
+#r = simulate_combat(ephraim,takumi)
+#print(r)
+
+#APPLY THE EFFECTS ON THE UNITS BEING AFFECTED AND NOT THE UNIT CAUSING THE EFFECT ON THE MAP
+#IF MARTH IS FIGHTING EPHRAIM WITH THREATEN DEF 3, GIVE MARTH (IF UNIT IS WITHIN 2 SPACES WITHIN
+#EPHRAIM, GIVE -7 DEF. I AM A GENIUS.
+
+class HeroDirectory:
+
+    def __init__(self):
+        self.heroes = [cordelia,alfonse,corrinF,hawkeye,clive,nino,roy,hector,ephraim,abel,takumi,anna,berkut,
+        cherche,eliwood,klein,lonqu,nowi,alm,innes,ike,julia,barst,lilina,mia,henry,robinM,
+        arthur,azama,azura,bartre,xander,beruka,caeda,cain,camilla,catria]
+
+    def getHeroes(self):
+        return self.heroes
 
 
 results = []
 #for hero in heroes:
-#    results.append(simulate_combat(lilina,hero))
+#    results.append(simulate_combat(xander,hero))
 #print(results)
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
