@@ -223,6 +223,9 @@ class State:
         self.leftToAct = leftToAct[:]
         self.turn = turn
 
+        self.alivePlayers = None
+        self.aliveEnemies = None
+
 
         #atkStats[1] += attacker.getWeapon().getMT()
         #defStats[1] += defender.getWeapon().getMT()
@@ -243,12 +246,7 @@ class State:
             if self.leftToAct[i] == unit:
                 self.leftToAct.pop(i)
             i += 1
-        if len(self.leftToAct) == 0:
-            add = 0
-            if self.phase == True: add = 1
-            next = State(self,self.map,not self.phase,self.map.getNextUnits(not self.phase),self.turn+add)
-        else :
-            next = State(self,self.map,self.phase,self.leftToAct,self.turn)
+        next = State(self,self.map,self.phase,self.leftToAct,self.turn)
 
         return next
 
@@ -291,8 +289,9 @@ class State:
         # we'll account for duo skills/pair up/canto later
         return tiles
 
-    def nextStates(self, unit):
-        return None
+    def enemyPhase(self):
+        map = self.map
+
 
 units = HeroDirectory().getHeroes()
 playerUnits = [marth,nino,takumi,ephraim]
@@ -316,28 +315,20 @@ def simulate(playerUnits,enemyUnits,map):
         if i == -1: # enemy phase case
             #print("AAAAA")
             eMap = copy(cur.getMap())
-            eState = State(cur, eMap, True, enemyUnits, cur.getTurn)
+            eState = State(cur, eMap, True, enemyUnits, cur.getTurn())
             eState.enemyPhase()
             pMap = copy(eState.getMap())
-            pState = State(eState, pMap, False, playerUnits, pState.getTurn() + 1)
+            pState = State(eState, pMap, False, playerUnits, eState.getTurn() + 1)
         else:
             while i >= 0: # loops through deleting each unit in rem units list
                 tempRem = curRem[:] # create copy of remaining units
-                r = tempRem.pop(i) # this guy sucks
-                for curUnit in tempRem: # everyone else,
-                    moves = cur.getPossibleMoves(curUnit) # get what they can do wait what am i cooking
-                    for m in moves: # for each of that unit's moves
-                        newMap = copy(cur.getMap()) # copy map
-                        #if len(tempRem) < 1: print("hiiiiiiiiii")
-                        newState = State(cur, newMap, False, tempRem, cur.getTurn) # make state
-                        newState.doMove(m, curRem[i]) # do the move the current unit is doing
-                        stack.append(newState)  # add modified state to stack
-                if len(tempRem) == 0:
-                    rMoves = cur.getPossibleMoves(r)
-                    for m in rMoves:
-                        newMap = copy(cur.getMap())
-                        newState = State(cur, newMap, False, tempRem, cur.getTurn)
-                        newState.doMove(m, curRem[i])
+                r = tempRem.pop(i) # this guyyyyyy
+                moves = cur.getPossibleMoves(r) # what is this guyyyyyy gonna do
+                for m in moves: # for each of this guyyyyyyy's moves
+                    newMap = copy(cur.getMap()) # copy map
+                    newState = State(cur, newMap, False, tempRem, cur.getTurn) # make state
+                    newState.doMove(m, r) # do the move the current unit is doing
+                    stack.append(newState)  # add modified state to stack
                 i -= 1
 
 
