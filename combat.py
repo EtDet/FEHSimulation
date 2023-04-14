@@ -856,12 +856,27 @@ class Hero:
         self.wpnType = wpnType
         self.move = movement  # 0 - inf, 1 - cav, 2 - fly, 3 - arm
 
+        self.HPcur = self.hp
+
+        self.atkBuff = 0
+        self.spdBuff = 0
+        self.defBuff = 0
+        self.resBuff = 0
+
+        self.atkDebuff = 0
+        self.spdDebuff = 0
+        self.defDebuff = 0
+        self.resDebuff = 0
+
         #specific unit skills
         self.weapon = weapon
         self.special = special
         self.askill = askill
         self.bskill = bskill
         self.cskill = cskill
+
+        self.tile = None
+
 
     def getColor(self):
         if self.wpnType == "Sword" or self.wpnType == "RBow" or self.wpnType == "RDagger" or self.wpnType == "RTome" or self.wpnType == "RDragon" or self.wpnType == "RBeast":
@@ -875,6 +890,12 @@ class Hero:
 
     def getMovement(self):
         return self.move
+
+    def getTile(self):
+        return self.tile
+
+    def setTile(self,tile):
+        self.tile = tile
 
     def getTargetedDef(self):
         isTome = self.wpnType == "RTome" or self.wpnType == "BTome" or self.wpnType == "GTome" or self.wpnType == "CTome" or self.wpnType == "Staff"
@@ -913,6 +934,13 @@ class Hero:
 
     def getStats(self):
         return [self.hp,self.at,self.sp,self.df,self.rs]
+
+    def setStats(self,stats):
+        self.hp = stats[0]
+        self.at = stats[1]
+        self.sp = stats[2]
+        self.df = stats[3]
+        self.rs = stats[4]
 
     def getName(self):
         return self.name
@@ -1325,3 +1353,4 @@ results = []
 
 #ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
 #JUST KEEP IN MIND ONCE YOU GET TO THAT BRIDGE WITH SKILLS NOT MEANT TO STACK
+
