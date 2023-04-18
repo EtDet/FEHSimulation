@@ -1,7 +1,7 @@
-﻿Name,HP,Atk,Spd,Def,Res,HP Grow,Atk Grow,Spd Grow,Def Grow,Res Grow
-Abel,39,33,32,25,25,50%,60%,55%,40%,45%
-Aelfric,43,40,31,20,37,55%,70%,55%,35%,65%
-Alear,40,43,46,32,26,50%,70%,70%,65%,50%
+﻿Name,HP,Atk,Spd,Def,Res,HP Grow,Atk Grow,Spd Grow,Def Grow,Res Grow,Movement
+Abel,39,33,32,25,25,50%,60%,55%,40%,45%,1
+Aelfric,43,40,31,20,37,55%,70%,55%,35%,65%,0
+Alear,40,43,46,32,26,50%,70%,70%,65%,50%,0
 NY!Alfonse,41,38,17,35,30,50%,70%,25%,70%,50%
 Alfonse,43,35,25,32,22,55%,60%,45%,55%,40%
 SP!Alfonse,41,35,33,30,18,50%,60%,60%,55%,30%
