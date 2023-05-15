@@ -283,8 +283,8 @@ class State:
 
         # 3 possible moves for each unit at a given state
         # do nothing
-        # attack
-        # support
+        # attack, if foe is exactly m spaces away, m = range of weapon
+        # support, if ally is exactly n spaces away, n = range of assist (damn you psychic and foul play)
 
         # we'll account for duo skills/pair up/canto later
         return tiles
@@ -292,6 +292,7 @@ class State:
     def enemyPhase(self):
         map = self.map
 
+# m leaves n
 
 units = HeroDirectory().getHeroes()
 playerUnits = [marth,nino,takumi,ephraim]
