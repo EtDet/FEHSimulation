@@ -216,15 +216,15 @@ class Map:
 
 # one current state, with a set map
 class State:
-    def __init__(self,prev,map,phase,leftToAct,turn):
+    def __init__(self,prev,map,phase,leftToAct,turn,alivePlayers,aliveEnemies):
         self.prev = prev
         self.map = copy(map)
         self.phase = phase # false - player, true - enemy
         self.leftToAct = leftToAct[:]
         self.turn = turn
 
-        self.alivePlayers = None
-        self.aliveEnemies = None
+        self.alivePlayers = alivePlayers
+        self.aliveEnemies = aliveEnemies
 
 
         #atkStats[1] += attacker.getWeapon().getMT()
@@ -236,7 +236,7 @@ class State:
     # distribute effects
 
     def doMove(self,newTile,unit):
-        oldTile = unit.getTile()
+        oldTile = unit.tile
         oldTile.setHero(None)
         unit.setTile(newTile)
         newTile.setHero(unit)
@@ -246,7 +246,7 @@ class State:
             if self.leftToAct[i] == unit:
                 self.leftToAct.pop(i)
             i += 1
-        next = State(self,self.map,self.phase,self.leftToAct,self.turn)
+        next = State(self,self.map,self.phase,self.leftToAct,self.turn,self.alivePlayers,self.aliveEnemies)
 
         return next
 
@@ -263,14 +263,14 @@ class State:
         return self.turn
 
     def getPossibleMoves(self,unit):
-        move = unit.getMovement()
+        move = unit.move
         tiles = []
         if move == 0 or move == 2:
-            tiles = unit.getTile().getTilesWithinNSpaces(2)
+            tiles = unit.tile.getTilesWithinNSpaces(2)
         if move == 1:
-            tiles = unit.getTile().getTilesWithinNSpaces(3)
+            tiles = unit.tile.getTilesWithinNSpaces(3)
         if move == 3:
-            tiles = unit.getTile().getTilesWithinNSpaces(1)
+            tiles = unit.tile.getTilesWithinNSpaces(1)
 
         i = 0
         while i < len(tiles):
@@ -279,20 +279,41 @@ class State:
                 i -= 1
             i += 1
         #print("NEXT")
-        tiles.append(unit.getTile())
+        tiles.append(unit.tile)
 
         # 3 possible moves for each unit at a given state
         # do nothing
-        # attack, if foe is exactly m spaces away, m = range of weapon
-        # support, if ally is exactly n spaces away, n = range of assist (damn you psychic and foul play)
+        # attack
+        # support
 
         # we'll account for duo skills/pair up/canto later
         return tiles
 
-    def enemyPhase(self):
-        map = self.map
+    def enemyPhase(self,playerUnits,enemyUnits):
+        mapObj = self.map
 
-# m leaves n
+        # ok who's alive
+        playerUnitsAlive = []
+        enemyUnitsAlive = []
+        blockList = []
+
+        map = mapObj.getMap() #y'know maybe I shouldn't've made the 2D array AND the object both be called "map"
+
+        for x in map:
+            for y in x:
+                if y.getHero() != None:
+                    if y.getHero() in playerUnits:
+                        playerUnitsAlive.append(y)
+                    elif y.getHero() in enemyUnits:
+                        enemyUnitsAlive.append(y)
+
+        #for x in playerUnitsAlive: x.setPass(True)
+        #for x in enemyUnitsAlive: x.setPass(True)
+
+
+
+
+
 
 units = HeroDirectory().getHeroes()
 playerUnits = [marth,nino,takumi,ephraim]
@@ -305,21 +326,23 @@ map.placeUnits(playerUnits,enemyUnits)
 
 def simulate(playerUnits,enemyUnits,map):
     turn = 1
-    startState = State(-1, map, False, playerUnits, turn)
+    startState = State(-1, map, False, playerUnits, turn, playerUnits, enemyUnits)
     stack = []
     stack.append(startState)
 
     while stack:  # while stack has states
+        #print(len(stack))
         cur = stack.pop() # get top of stack
         curRem = cur.getLeftToAct() # get units that can act at this state
         i = len(curRem) - 1 # start at end of remaining units list
         if i == -1: # enemy phase case
             #print("AAAAA")
             eMap = copy(cur.getMap())
-            eState = State(cur, eMap, True, enemyUnits, cur.getTurn())
-            eState.enemyPhase()
+            eState = State(cur, eMap, True, enemyUnits, cur.getTurn(), playerUnits, enemyUnits)
+            eState.enemyPhase(playerUnits,enemyUnits)
             pMap = copy(eState.getMap())
-            pState = State(eState, pMap, False, playerUnits, eState.getTurn() + 1)
+            #pState = State(eState, pMap, False, playerUnits, eState.getTurn() + 1)
+            stack = []
         else:
             while i >= 0: # loops through deleting each unit in rem units list
                 tempRem = curRem[:] # create copy of remaining units
@@ -327,7 +350,7 @@ def simulate(playerUnits,enemyUnits,map):
                 moves = cur.getPossibleMoves(r) # what is this guyyyyyy gonna do
                 for m in moves: # for each of this guyyyyyyy's moves
                     newMap = copy(cur.getMap()) # copy map
-                    newState = State(cur, newMap, False, tempRem, cur.getTurn) # make state
+                    newState = State(cur, newMap, False, tempRem, cur.getTurn,playerUnits,enemyUnits) # make state
                     newState.doMove(m, r) # do the move the current unit is doing
                     stack.append(newState)  # add modified state to stack
                 i -= 1
@@ -351,7 +374,7 @@ def printMoves(moves):
     for x in moves:
         print(x.getX(),x.getY())
 
-startState = State(-1,map,False,playerUnits,1)
+startState = State(-1,map,False,playerUnits,1,playerUnits,enemyUnits)
 print("Ephraim,Nino,Takumi,Marth")
 
 #moves = startState.getPossibleMoves(ephraim)
@@ -373,5 +396,4 @@ print("Ephraim,Nino,Takumi,Marth")
 
 #print(finalState.getPhase())
 #print(finalState.getLeftToAct()[0].getName())
-
 
