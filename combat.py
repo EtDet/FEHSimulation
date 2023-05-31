@@ -14,12 +14,36 @@ def simulate_combat(attacker, defender, isInSim):
     atkStats[1] += attacker.getWeapon().getMT()
     defStats[1] += defender.getWeapon().getMT()
 
-    # current special count
+    # current special count ---- SHOULD BE IN UNIT ----
     atkSpecialCounter = attacker.getCooldown()
     defSpecialCounter = defender.getCooldown()
     # max special count
     permASC = atkSpecialCounter
     permDSC = defSpecialCounter
+
+    print(atkStats,"before applying stat buffs/debuffs")
+
+    # is unit affected by panic ---- SHOULD BE IN UNIT ----
+    AtkPanicFactor = 1
+    DefPanicFactor = 1
+
+    if Status.Panic in attacker.statusNeg: AtkPanicFactor *= -1
+    if Status.Panic in defender.statusNeg: DefPanicFactor *= -1
+
+    if Status.NullPanic in attacker.statusPos: AtkPanicFactor = 1
+    if Status.NullPanic in defender.statusPos: DefPanicFactor = 1
+
+    atkStats[1] += attacker.buff_at * AtkPanicFactor + attacker.debuff_at
+    atkStats[2] += attacker.buff_sp * AtkPanicFactor + attacker.debuff_sp
+    atkStats[3] += attacker.buff_df * AtkPanicFactor + attacker.debuff_df
+    atkStats[4] += attacker.buff_rs * AtkPanicFactor + attacker.debuff_rs
+
+    defStats[1] += defender.buff_at * DefPanicFactor + defender.debuff_at
+    defStats[2] += defender.buff_sp * DefPanicFactor + defender.debuff_sp
+    defStats[3] += defender.buff_df * DefPanicFactor + defender.debuff_df
+    defStats[4] += defender.buff_rs * DefPanicFactor + defender.debuff_rs
+
+    print(atkStats, "after applying stat buffs/debuffs")
 
     # triangle adept, default of -1
     triAdept = -1
@@ -403,8 +427,8 @@ def simulate_combat(attacker, defender, isInSim):
         else:
             x += 1
 
-    print(atkStats)
-    print(defStats)
+    #print(atkStats)
+    #print(defStats)
 
     # additional follow-up granted by outspeeding
     if (atkStats[2] > defStats[2] + 4): atkFollowUps += 1
@@ -907,8 +931,8 @@ class Hero:
         self.debuff_df = 0  # HC converts into buff, removes
         self.debuff_rs = 0  # debuff values from units
 
-        self.posStatus = []   # array of positive status effects currently held, cleared upon start of unit's turn
-        self.negStatus = []   # array of positive status effects currently held, cleared upon end of unit's action
+        self.statusPos = []   # array of positive status effects currently held, cleared upon start of unit's turn
+        self.statusNeg = []   # array of positive status effects currently held, cleared upon end of unit's action
 
         self.growth_hp = 0  # growth rates for given unit
         self.growth_at = 0  # mainly used to determine
@@ -943,6 +967,8 @@ class Hero:
         self.tile = None
         self.passStatus = False
 
+        self.spLines = [""] * 4
+
     def getColor(self):
         if self.wpnType == "Sword" or self.wpnType == "RBow" or self.wpnType == "RDagger" or self.wpnType == "RTome" or self.wpnType == "RDragon" or self.wpnType == "RBeast":
             return "Red"
@@ -958,6 +984,41 @@ class Hero:
     #    Lance,BBow,BDagger,BTome,BDragon,BBeast = 1
     #    Axe,GBow,GDagger,GTome,GDragon,GBeast = 2
     #    Staff,CBow,CDagger,CTome,CDragon,CBeast = 3
+
+
+    def inflict(self, status):
+        if status.value > 100 and status not in self.statusPos:
+            self.statusPos.append(status)
+            print(self.name + " receives " + status.name + " (+).")
+        elif status.value < 100 and status not in self.statusNeg:
+            self.statusNeg.append(status)
+            print(self.name + " receives " + status.name + " (-).")
+
+    def clearPosStatus(self): self.posStatus.clear()
+    def clearNegStatus(self): self.negStatus.clear()
+
+    def inflictStat(self, stat, num):
+        if num > 0:
+            match stat:
+                case 1: self.buff_at = max(self.buff_at, num)
+                case 2: self.buff_sp = max(self.buff_sp, num)
+                case 3: self.buff_df = max(self.buff_df, num)
+                case 4: self.buff_rs = max(self.buff_rs, num)
+        elif num < 0:
+            match stat:
+                case 1: self.debuff_at = min(self.debuff_at, num)
+                case 2: self.debuff_sp = min(self.debuff_sp, num)
+                case 3: self.debuff_df = min(self.debuff_df, num)
+                case 4: self.debuff_rs = min(self.debuff_rs, num)
+
+        statStr = ""
+        match stat:
+            case 1: statStr = "Atk"
+            case 2: statStr = "Spd"
+            case 3: statStr = "Def"
+            case 4: statStr = "Res"
+
+        print(self.name + "'s " + statStr + " was affected by " + str(num) + ".")
 
     def setTile(self, tile):
         self.tile = tile
@@ -1025,7 +1086,7 @@ class Hero:
         return self.special.getName()
 
     def addSpecialLines(self, line0, line1, line2, line3):
-        self.spLines = [""] * 4
+
         self.spLines[0] = line0
         self.spLines[1] = line1
         self.spLines[2] = line2
@@ -1133,68 +1194,76 @@ earth_pair = Blessing(3,2,9)
 L_myrrh = Blessing(2,3,3)
 M_seiðr = Blessing(6,1,1)
 
-#class Status():
-#    def __init__(self, name, type):
-#        self.name = name # string, name of status
-#        self.type = type # boolean, good or bad status
+class Stat(Enum):
+    HP = 0
+    ATK = 1
+    SPD = 2
+    DEF = 3
+    RES = 4
 
 # positive status effects are removed upon the start of the next controllable phase
 # negative status effects are removed upon the unit finishing that turn's action
 
-#ST_gravity = Status("Gravity", False)
-#ST_panic = Status("Panic", False)
-#ST_AirOrders = Status("Air Orders", True)
+# 🔴 - combat
+# 🔵 - movement
+# 🟢 - other
 
 class Status(Enum):
-    Gravity = 0             # Movement reduced to 1
-    Panic = 1               # Buffs are negated & treated as penalties
-    NullCounterattacks = 2  # Unable to counterattack
-    MobilityUp = 3          # Movement increased by 1, cancelled by Gravity
-    TriAdept = 4            # Triangle Adept 3, weapon tri adv/disadv affected by 20%
-    Guard = 5               # Special charge -1
-    AirOrders = 6           # Unit can move to space adjacent to ally within 2 spaces
-    EffDragons = 7          # Gain effectiveness against dragons
-    Isolation = 8           # Cannot use or receive assist skills
-    BonusDoubler = 9        # Gain atk/spd/def/res boost by current bonus on stat, canceled by Panic
-    NullEffDragons = 10     # Gain immunity to "eff against dragons"
-    NullEffArmors = 11      # Gain immunity to "eff against armors"
-    Dominance = 12          # Deal true damage = number of penalties on foe
-    ResonanceBlades = 13    # Grants Atk/Spd+4 during combat
-    Desperation = 14        # If unit initiates combat and can make follow-up attack, makes follow-up attack before foe can counter
-    ResonanceShields = 15   # Grants Def/Res+4 during combat and foe cannot make a follow-up attack in unit's first combat
-    Vantage = 16            # Unit counterattacks before foe's first attack
-    DeepWounds = 17         # Cannot recover HP
-    FallenStar = 18         # Reduces damage from foe's first attack by 80% in unit's first combat in player phase and first combat in enemy phase
-    CancelFollowUp = 19     # Foe cannot make a follow-up attack
-    NullEffFlyers = 20      # Gain immunity to "eff against flyers"
-    Dodge = 21              # Reduces combat & non-Røkkr AoE damage by X%, X = (unit's spd - foe's spd) * 4, max of 40%
-    MakeFollowUp = 22       # Unit makes follow-up attack when initiating combat
-    TriAttack = 23          # If within 2 spaces of 2 allies with TriAttack and initiating combat, unit attacks twice
-    NullPanic = 24          # Nullifies Panic
-    CancelAffinity = 25     # Cancel Affinity 3, reverses weapon triangle to neutral if Triangle Adept-having unit/foe has advantage
-    Stall = 26              # Converts MobilityUp to Gravity
-    NullFollowUp = 27       # Disables skills that guarantee foe's follow-ups or prevent unit's follow-ups
-    Pathfinder = 28         # Unit's space costs 0 to move to by allies
-    FalseStart = 29         # Disables "at start of turn" skills, does not neutralize beast transformations or reusable duo/harmonized skills, cancelled by Odd/Even Recovery Skills
-    NullBonuses = 30        # Neutralizes foe's bonuses in combat
-    GrandStrategy = 31      # If negative penalty is present on foe, grants atk/spd/def/res during combat equal to penalty * 2 for each stat
-    CantoControl = 32       # If range = 1 Canto skill becomes Canto 1, if range = 2, turn ends when canto triggers
-    EnGarde = 33            # Neutralizes damage outside of combat, except AoE damage
-    SpecialCharge = 34      # Special charge +1 during combat
-    Treachery = 35          # Deal true damage = number of bonuses on unit
-    WarpBubble = 36         # Foes cannot warp onto spaces within 4 spaces of unit (does not affect pass skills)
-    Charge = 37             # Unit can move to any space up to 3 spaces away in cardinal direction, including on slow terrain (bushes/trenches), terrain/skills that halt movement still apply, treated as warp movement
-    Exposure = 38           # Foe's attacks deal +10 true damage
-    Canto1 = 39             # Can move 1 space after combat (not writing all the canto jargon here)
-    FoePenaltyDoubler = 40  # Inflicts atk/spd/def/res -X on foe equal to current penalty on each stat
-    Undefended = 41         # Cannot be protected by savior
-    Feud = 42               # Disables all allies' skills (excluding self) in combat
-    DualStrike = 43         # If unit initiates combat and is adjacent to unit with DualStrike, unit attacks twice
-    IgnoreTerrain = 44      # Ignores slow terrain (bushes/trenches)
-    ReduceAoE = 45          # Reduces non-Røkkr AoE damage taken by 80%
-    NullPenalties = 46      # Neutralizes unit's penalties in combat
-    Hexblade = 47           # Damage inflicted using lower of foe's def or res (applies to AoE skills)
-    Sabotage = 48           # Reduces atk/spd/def/res by lowest debuff among unit & allies within 2 spaces during combat
+
+    # negative
+
+    Gravity = 0              # 🔵 Movement reduced to 1
+    Panic = 1                # 🔴 Buffs are negated & treated as penalties
+    NullCounterattacks = 2   # 🔴 Unable to counterattack
+    TriAdept = 4             # 🔴 Triangle Adept 3, weapon tri adv/disadv affected by 20%
+    Guard = 5                # 🔴 Special charge -1
+    Isolation = 8            # 🟢 Cannot use or receive assist skills
+    DeepWounds = 17          # 🟢 Cannot recover HP
+    Stall = 26               # 🔵 Converts MobilityUp to Gravity
+    FalseStart = 29          # 🟢 Disables "at start of turn" skills, does not neutralize beast transformations or reusable duo/harmonized skills, cancelled by Odd/Even Recovery Skills
+    CantoControl = 32        # 🔵 If range = 1 Canto skill becomes Canto 1, if range = 2, turn ends when canto triggers
+    Exposure = 38            # 🔴 Foe's attacks deal +10 true damage
+    Undefended = 41          # 🔴 Cannot be protected by savior
+    Feud = 42                # 🔴 Disables all allies' skills (excluding self) in combat, does not include savior, but you get undefended if you get this because Embla
+    Sabotage = 48            # 🔴 Reduces atk/spd/def/res by lowest debuff among unit & allies within 2 spaces during combat
+
+    # positive
+
+    MobilityUp = 103         # 🔵 Movement increased by 1, cancelled by Gravity
+    AirOrders = 106          # 🔵 Unit can move to space adjacent to ally within 2 spaces
+    EffDragons = 107         # 🔴 Gain effectiveness against dragons
+    BonusDoubler = 109       # 🔴 Gain atk/spd/def/res boost by current bonus on stat, canceled by Panic
+    NullEffDragons = 110     # 🔴 Gain immunity to "eff against dragons"
+    NullEffArmors = 111      # 🔴 Gain immunity to "eff against armors"
+    Dominance = 112          # 🔴 Deal true damage = number of stat penalties on foe (including Panic + Bonus)
+    ResonanceBlades = 113    # 🔴 Grants Atk/Spd+4 during combat
+    Desperation = 114        # 🔴 If unit initiates combat and can make follow-up attack, makes follow-up attack before foe can counter
+    ResonanceShields = 115   # 🔴 Grants Def/Res+4 during combat and foe cannot make a follow-up attack in unit's first combat
+    Vantage = 116            # 🔴 Unit counterattacks before foe's first attack
+    FallenStar = 118         # 🔴 Reduces damage from foe's first attack by 80% in unit's first combat in player phase and first combat in enemy phase
+    CancelFollowUp = 119     # 🔴 Foe cannot make a follow-up attack
+    NullEffFlyers = 120      # 🔴 Gain immunity to "eff against flyers"
+    Dodge = 121              # 🔴 Reduces combat & non-Røkkr AoE damage by X%, X = (unit's spd - foe's spd) * 4, max of 40%
+    MakeFollowUp = 122       # 🔴 Unit makes follow-up attack when initiating combat
+    TriAttack = 123          # 🔴 If within 2 spaces of 2 allies with TriAttack and initiating combat, unit attacks twice
+    NullPanic = 124          # 🔴 Nullifies Panic
+    CancelAffinity = 125     # 🔴 Cancel Affinity 3, reverses weapon triangle to neutral if Triangle Adept-having unit/foe has advantage
+    NullFollowUp = 127       # 🔴 Disables skills that guarantee foe's follow-ups or prevent unit's follow-ups
+    Pathfinder = 128         # 🔵 Unit's space costs 0 to move to by allies
+    NullBonuses = 130        # 🔴 Neutralizes foe's bonuses in combat
+    GrandStrategy = 131      # 🔴 If negative penalty is present on foe, grants atk/spd/def/res during combat equal to penalty * 2 for each stat
+    EnGarde = 133            # 🔴 Neutralizes damage outside of combat, except AoE damage
+    SpecialCharge = 134      # 🔴 Special charge +1 during combat
+    Treachery = 135          # 🔴 Deal true damage = number of stat bonuses on unit (not including Panic + Bonus)
+    WarpBubble = 136         # 🔵 Foes cannot warp onto spaces within 4 spaces of unit (does not affect pass skills)
+    Charge = 137             # 🔵 Unit can move to any space up to 3 spaces away in cardinal direction, terrain/skills that halt (not slow) movement still apply, treated as warp movement
+    Canto1 = 139             # 🔵 Can move 1 space after combat (not writing all the canto jargon here)
+    FoePenaltyDoubler = 140  # 🔴 Inflicts atk/spd/def/res -X on foe equal to current penalty on each stat
+    DualStrike = 143         # 🔴 If unit initiates combat and is adjacent to unit with DualStrike, unit attacks twice
+    TraverseTerrain = 144    # 🔵 Ignores slow terrain (bushes/trenches)
+    ReduceAoE = 145          # 🔴 Reduces non-Røkkr AoE damage taken by 80%
+    NullPenalties = 146      # 🔴 Neutralizes unit's penalties in combat
+    Hexblade = 147           # 🔴 Damage inflicted using lower of foe's def or res (applies to AoE skills)
 
 # maps are weighted graphs oh god
 
@@ -1722,7 +1791,12 @@ abel.addSpecialLines("\"Make your peace.\"",
 #playerUnits = [marth, robinM, takumi, ephraim]
 #enemyUnits = [nowi, alm, hector, bartre]
 
+alpha = ephraim
+omega = takumi
 
+alpha.inflict(Status.Panic)
+alpha.inflictStat(1,-7)
+alpha.inflictStat(3,7)
 r = simulate_combat(ephraim,takumi,False)
 print(r)
 
