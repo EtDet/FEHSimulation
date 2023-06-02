@@ -13,19 +13,17 @@ def simulate_combat(attacker, defender, isInSim):
 
     if attacker.HPcur <= 0 or defender.HPcur <= 0: return "Invalid Combat: One or more units are below 0 HP"
 
-    print(atkStats,"before applying stat buffs/debuffs")
-
-    # is unit affected by panic ---- SHOULD BE IN UNIT ----
+    # is unit affected by panic
     AtkPanicFactor = 1
     DefPanicFactor = 1
+
+    # buffs + debuffs calculation
 
     if Status.Panic in attacker.statusNeg: AtkPanicFactor *= -1
     if Status.Panic in defender.statusNeg: DefPanicFactor *= -1
 
     if Status.NullPanic in attacker.statusPos: AtkPanicFactor = 1
     if Status.NullPanic in defender.statusPos: DefPanicFactor = 1
-
-    # buffs + debuffs added
 
     atkStats[1] += attacker.buff_at * AtkPanicFactor + attacker.debuff_at
     atkStats[2] += attacker.buff_sp * AtkPanicFactor + attacker.debuff_sp
@@ -36,8 +34,6 @@ def simulate_combat(attacker, defender, isInSim):
     defStats[2] += defender.buff_sp * DefPanicFactor + defender.debuff_sp
     defStats[3] += defender.buff_df * DefPanicFactor + defender.debuff_df
     defStats[4] += defender.buff_rs * DefPanicFactor + defender.debuff_rs
-
-    print(atkStats, "after applying stat buffs/debuffs")
 
     # triangle adept, default of -1
     triAdept = -1
@@ -60,9 +56,8 @@ def simulate_combat(attacker, defender, isInSim):
     braveATKR = False
     braveDEFR = False
 
-    # enables effectiveness against colorless foes
-    colorlessAdvAtk = False
-    colorlessAdvDef = False
+    # vantage
+    vantageEnabled = False
 
     # number of follow-ups permitted
     atkSkillFollowUps = 0
@@ -129,8 +124,6 @@ def simulate_combat(attacker, defender, isInSim):
         if key == "selfDmg": atkSelfDmg += atkSkills[key]       # damage to self after combat always
         if key == "atkOnlySelfDmg": atkDoSelfDmgCheck = True    # damage to self after combat if attacker had attacked
         if key == "atkOnlyOtherDmg": atkDoOtherDmgCheck = True  # damage to other unit after combat if attacker had attacked
-
-        if key == "colorlessAdv": colorlessAdvAtk = True
 
         if key == "spDmgAdd": atkFixedSpDmgBoost += atkSkills[key]
 
@@ -202,8 +195,6 @@ def simulate_combat(attacker, defender, isInSim):
         if key == "heavyBlade": defDoHeavyBladeCheck = True
         if key == "flashingBlade": defDoFlashingBladeCheck = True
 
-        if key == "colorlessAdv": colorlessAdvDef = True
-
         if key == "spDmgAdd": defFixedSpDmgBoost += defSkills[key]
         if key == "dragonCheck": dragonCheckD = True
 
@@ -236,8 +227,9 @@ def simulate_combat(attacker, defender, isInSim):
         if key == "cDaggerBreak" and attacker.wpnType == "CDagger": defSkillFollowUps += 1; atkSkillFollowUps -= 1
 
         if key == "vantage":
-            if defender.HPcur / defStats[0] >= 0.75 - (0.25 * (3 - defSkills["vantage"])):
+            if defender.HPcur / defStats[0] <= 0.75 - (0.25 * (3 - defSkills["vantage"])):
                 vantageEnabled = True
+
         if key == "cancelTA":
             defCA = defSkills[key]
 
@@ -344,7 +336,7 @@ def simulate_combat(attacker, defender, isInSim):
     # COLOR ADVANTAGE CHECK
 
     if (attacker.getColor() == "Red" and defender.getColor() == "Green") or (attacker.getColor() == "Green" and defender.getColor() == "Blue") or \
-            (attacker.getColor() == "Blue" and defender.getColor() == "Red") or (defender.getColor() == "Colorless" and colorlessAdvAtk):
+            (attacker.getColor() == "Blue" and defender.getColor() == "Red") or (defender.getColor() == "Colorless" and "colorlessAdv" in atkSkills):
 
         if (atkCA == 1 or defCA == 1) and triAdept != -1: triAdept = -1
         if defCA == 2 and triAdept != -1: triAdept = -1
@@ -354,7 +346,7 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[1] -= math.trunc(defStats[1] * (0.25 + .05 * triAdept))
 
     if (attacker.getColor() == "Blue" and defender.getColor() == "Green") or (attacker.getColor() == "Red" and defender.getColor() == "Blue") or \
-            (attacker.getColor() == "Green" and defender.getColor() == "Red") or (attacker.getColor() == "Colorless" and colorlessAdvDef):
+            (attacker.getColor() == "Green" and defender.getColor() == "Red") or (attacker.getColor() == "Colorless" and "colorlessAdv" in defSkills):
 
         if (atkCA == 1 or defCA == 1) and triAdept != -1: triAdept = -1
         if atkCA == 2 and triAdept != -1: triAdept = -1
@@ -364,32 +356,21 @@ def simulate_combat(attacker, defender, isInSim):
 
     # WHICH DEFENSE ARE WE TARGETING?
 
-    r = 0  # isResTargeted by atkr (is the res stat targeted by the attacker?): 0 - no, 1 - yes
-    x = 0  # isResTargeted by defr (is the res stat targeted by the defender?): 0 - no, 1 - yes
-    if attacker.getTargetedDef() == 1:
-        r += 1
+    r = int(attacker.getTargetedDef() == 1)
+
     if attacker.getTargetedDef() == 0 and dragonCheckA:
-        if defender.getRange() == 2:
-            if defStats[3] > defStats[4]:
-                r += 1
-            else:
-                r += 0
-        else:
+        if defender.getRange() == 2 and defStats[3] > defStats[4]:
+            r += 1
+        elif defender.getRange() != 2:
             r += 1
 
-    if defender.getTargetedDef() == 1:
-        x += 1
-    if defender.getTargetedDef() == 0 and dragonCheckD:
-        if attacker.getRange() == 2:
-            if atkStats[3] > atkStats[4]:
-                x += 1
-            else:
-                x += 0
-        else:
-            x += 1
+    x = int(defender.getTargetedDef() == 1)
 
-    #print(atkStats)
-    #print(defStats)
+    if defender.getTargetedDef() == 0 and dragonCheckD:
+        if attacker.getRange() == 2 and atkStats[3] > atkStats[4]:
+            x += 1
+        elif attacker.getRange() != 2:
+            x += 1
 
     # additional follow-up granted by outspeeding
     if (atkStats[2] > defStats[2] + 4): atkSpdFollowUps += 1
@@ -398,10 +379,6 @@ def simulate_combat(attacker, defender, isInSim):
 
     atkAlive = True
     defAlive = True
-
-    # define in method?
-    atkSpecialTriggered = False
-    defSpecialTriggered = False
 
     def getSpecialHitDamage(effs,initStats,otherStats,defOrRes):
 
@@ -464,7 +441,8 @@ def simulate_combat(attacker, defender, isInSim):
             dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes)
             stkSpecialTriggered = True
 
-        attack = stkStats[1] - defStats[3 + defOrRes]
+        attack = stkStats[1] - steStats[3 + defOrRes]
+
         if attack < 0: attack = 0
         attack += dmgBoost
         if striker.getSpecialType() == "Staff": attack = math.trunc(attack * 0.5)
@@ -504,24 +482,35 @@ def simulate_combat(attacker, defender, isInSim):
     # START OF COMBAT
     ###################################################################################################################
 
-    # first attack by attacker
+    # vantage attack by defender
+    if vantageEnabled and (attacker.getRange() == defender.getRange() or ignoreRng) and not cannotCounter:
+        if defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
+        if defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
 
-    atkInitStats = atkStats[:]
-    defInitStats = defStats[:]
+        print(defender.getName() + " activates Vantage.")
+
+        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
+
+        if attacker.HPcur <= 0:
+            attacker.HPcur = 0
+            atkAlive = False
+            print(attacker.getName() + " falls.")
+
+        if braveDEFR and atkAlive:
+            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
+
+            if attacker.HPcur <= 0:
+                attacker.HPcur = 0
+                atkAlive = False
+                print(attacker.getName() + " falls.")
+
+    # first attack by attacker
 
     if atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
     if atkDoOtherDmgCheck == True: atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
 
     # first attack by attacker
-    attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r)
-
-    if defender.HPcur <= 0:
-        defender.HPcur = 0
-        defAlive = False
-        print(defender.getName() + " falls.")
-
-    # first attack by attacker if brave effect
-    if braveATKR and defAlive:
+    if atkAlive:
         attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r)
 
         if defender.HPcur <= 0:
@@ -529,295 +518,76 @@ def simulate_combat(attacker, defender, isInSim):
             defAlive = False
             print(defender.getName() + " falls.")
 
-# -------------------------------------------------------------^^^^^^^^^^^^^ PUT THIS IN FUNCTION
+        # first attack by attacker if brave effect
+        if braveATKR and defAlive:
 
+            attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r)
 
+            if defender.HPcur <= 0:
+                defender.HPcur = 0
+                defAlive = False
+                print(defender.getName() + " falls.")
 
     # first counterattack by defender
 
-    if (attacker.getRange() == defender.getRange() or ignoreRng) and defAlive and not cannotCounter:
+    if ((attacker.getRange() == defender.getRange() or ignoreRng) and atkAlive and defAlive and not cannotCounter) and (not vantageEnabled or vantageEnabled and defSpdFollowUps + defSkillFollowUps > 0):
 
-        if defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
-        if defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
+        if defDoSelfDmgCheck == True and not vantageEnabled: defSelfDmg += defSkills["atkOnlySelfDmg"]
+        if defDoOtherDmgCheck == True and not vantageEnabled: defOtherDmg += defSkills["atkOnlyOtherDmg"]
 
-        dmgBoost = 0
-        extraDmg = 0
-        if defender.specialCount == 0 and defender.getSpecialType() == "Offense":
-            print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
-            print(defender.getSpecialLine())
-            for key in defSpEffects:
-                if key == "defReduce":
-                    defSpecialTriggered = True
-                    atkStats[3] -= math.trunc(atkStats[3] * .10 * defSpEffects["defReduce"])
-                    atkStats[4] -= math.trunc(atkStats[4] * .10 * defSpEffects["defReduce"])
-                if key == "dmgBoost":
-                    defSpecialTriggered = True
-                    dmgBoost = defSpEffects["dmgBoost"] * 0.1
-                if key == "resBoost":
-                    defSpecialTriggered = True
-                    extraDmg = math.trunc(defStats[4] * 0.1 * defSpEffects["resBoost"])
-                # if key == "heal":
+        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
 
-        defrATK1 = defStats[1] - atkStats[3 + x] + extraDmg
-        if defrATK1 < 0: defrATK1 = 0
-        defrATK1 += math.trunc(defrATK1 * dmgBoost)
-        if defender.getWeaponType() == "Staff": defrATK1 = math.trunc(defrATK1 * 0.5)
-
-        atkStats[0] = atkStats[0] - defrATK1
-        print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK1) + " damage.")
-
-        if attacker.specialCount > 0: attacker.specialCount -= 1
-        if defender.specialCount > 0: defender.specialCount -= (1 + defSCCB)
-        if attacker.specialCount < 0: attacker.specialCount = 0
-        if defender.specialCount < 0: defender.specialCount = 0
-        if atkSpecialTriggered: attacker.specialCount = attacker.specialMax
-        if defSpecialTriggered: defender.specialCount = defender.specialMax
-        defSpecialTriggered = False
-
-        newHPA = atkStats[0]
-        newHPD = defStats[0]
-
-        atkStats = atkInitStats[:]
-        defStats = defInitStats[:]
-
-        atkStats[0] = newHPA
-        defStats[0] = newHPD
-
-        #print(atkStats)
-
-        if "absorb" in defSkills:
-            amountHealed = math.trunc(defrATK1 * 0.5)
-            defStats[0] += amountHealed
-            print(defender.getName() + " absorbs " + str(amountHealed) + " HP.")
-            if defStats[0] > defInitStats[0]: defStats[0] = defInitStats[0]
-
-        if atkStats[0] <= 0:
-            atkStats[0] = 0
+        if attacker.HPcur <= 0:
+            attacker.HPcur = 0
             atkAlive = False
             print(attacker.getName() + " falls.")
 
         if braveDEFR and atkAlive:
-            braveDEF1 = defStats[1] - atkStats[3 + x]
-            if braveDEF1 < 0: braveDEF1 = 0
-            atkStats[0] = atkStats[0] - braveDEF1
-            print(defender.getName() + " attacks " + attacker.getName() + " for " + str(braveDEF1) + " damage.")
-            if attacker.specialCount > 0: attacker.specialCount -= 1
-            if defender.specialCount > 0: defender.specialCount -= (1 + defSCCB)
-            if atkStats[0] <= 0:
-                atkStats[0] = 0
+            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
+
+            if attacker.HPcur <= 0:
+                attacker.HPcur = 0
                 atkAlive = False
                 print(attacker.getName() + " falls.")
+
 
     # second attack by attacker
 
     if atkSkillFollowUps + atkSpdFollowUps > 0 and atkAlive and defAlive:
-        dmgBoost = 0
-        extraDmg = 0
-        selfHeal = False
 
-        # OFFENSIVE SPECIAL CHECK BY ATTACKER
-        if attacker.specialCount == 0 and attacker.getSpecialType() == "Offense":
-            print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
-            print(attacker.getSpecialLine())
-            for key in atkSpEffects:
-                if key == "healSelf":
-                    atkSpecialTriggered = True
-                    selfHeal = True
-                if key == "defReduce":
-                    atkSpecialTriggered = True
-                    defStats[3] -= math.trunc(defStats[3] * .10 * atkSpEffects["defReduce"])
-                    defStats[4] -= math.trunc(defStats[4] * .10 * atkSpEffects["defReduce"])
-                if key == "dmgBoost":
-                    atkSpecialTriggered = True
-                    dmgBoost = atkSpEffects["dmgBoost"] * 0.1
-                if key == "atkBoost":
-                    atkSpecialTriggered = True
-                    extraDmg = math.trunc(atkTempAtk * 0.1 * atkSpEffects["atkBoost"])
-                    # needs to use atk before weapon triangle
-                if key == "defBoost":
-                    atkSpecialTriggered = True
-                    extraDmg = math.trunc(atkStats[3] * 0.1 * atkSpEffects["defBoost"])
-                if key == "resBoost":
-                    atkSpecialTriggered = True
-                    extraDmg = math.trunc(atkStats[4] * 0.1 * atkSpEffects["resBoost"])
+        attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r)
 
-        atkrATK2 = (atkStats[1] - defStats[3 + r]) + extraDmg
-        if atkrATK2 < 0: atkrATK2 = 0
-
-        atkrATK2 += math.trunc(atkrATK2 * dmgBoost)
-
-        if atkSpecialTriggered: atkrATK2 += atkFixedSpDmgBoost
-
-        if attacker.getWeaponType() == "Staff": atkrATK2 = math.trunc(atkrATK2 * 0.5)
-
-        # DEFENSIVE SPECIAL CHECK BY DEFENDER
-        if defender.specialCount == 0 and defender.getSpecialType() == "Defense" and attacker.getRange() == 1:
-            print(defender.getName() + " procs " + defender.getSpName() + ".")
-            print(defender.getSpecialLine())
-            for key in defSpEffects:
-                if key == "closeShield":
-                    defSpecialTriggered = True
-                    atkrATK2 -= math.trunc(atkrATK2 * 0.10 * defSpEffects["closeShield"])
-
-        defStats[0] = defStats[0] - atkrATK2
-
-        print(attacker.getName() + " attacks " + defender.getName() + " for " + str(atkrATK2) + " damage.")
-        if attacker.specialCount > 0: attacker.specialCount -= (1 + atkSCCB)
-        if defender.specialCount > 0: defender.specialCount -= 1
-        if attacker.specialCount < 0: attacker.specialCount = 0
-        if defender.specialCount < 0: defender.specialCount = 0
-        if atkSpecialTriggered: attacker.specialCount = attacker.specialMax
-        if defSpecialTriggered: defender.specialCount = defender.specialMax
-
-        atkSpecialTriggered = False
-        defSpecialTriggered = False
-
-        newHPA = atkStats[0]
-        newHPD = defStats[0]
-
-        atkStats = atkInitStats[:]
-        defStats = defInitStats[:]
-
-        atkStats[0] = newHPA
-        defStats[0] = newHPD
-
-        if ("absorb" in atkSkills or selfHeal) and atkStats[0] < atkInitStats[0]:
-            # need to consider case where special defeats foe, init hp-dmg is used
-            if "absorb" in atkSkills: amountHealed = math.trunc(atkrATK2 * 0.5)
-            if selfHeal: amountHealed = math.trunc(atkrATK2 * 0.1 * atkSpEffects["healSelf"])
-            atkStats[0] += amountHealed
-            if "absorb" in atkSkills: print(attacker.getName() + " absorbs " + str(amountHealed) + " HP.")
-            if selfHeal: print(attacker.getName() + " restores " + str(amountHealed) + " HP.")
-            if atkStats[0] > atkInitStats[0]: atkStats[0] = atkInitStats[0]
-
-        selfHeal = False
-
-        if defStats[0] <= 0:
-            defStats[0] = 0
+        if defender.HPcur <= 0:
+            defender.HPcur = 0
             defAlive = False
             print(defender.getName() + " falls.")
 
         if braveATKR and defAlive:
-            if attacker.specialCount == 0 and attacker.getSpecialType() == "Offense":
-                print(attacker.getName() + " procs " + attacker.getSpName() + ".")  # attack name
-                print(attacker.getSpecialLine())
-                for key in atkSpEffects:
-                    if key == "defReduce":
-                        atkSpecialTriggered = True
-                        defStats[3] -= math.trunc(defStats[3] * .10 * atkSpEffects["defReduce"])
-                        defStats[4] -= math.trunc(defStats[4] * .10 * atkSpEffects["defReduce"])
-                    if key == "resBoost":
-                        atkSpecialTriggered = True
-                        extraDmg = math.trunc(atkStats[4] * 0.1 * atkSpEffects["resBoost"])
 
-            braveATK2 = atkStats[1] - defStats[3 + r] + extraDmg
-            if braveATK2 < 0: atkrATK2 = 0
+            attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r)
 
-            # DEFENSIVE SPECIAL CHECK BY DEFENDER
-            if defender.specialCount == 0 and defender.getSpecialType() == "Defense" and attacker.getRange() == 1:
-                print(defender.getName() + " procs " + defender.getSpName() + ".")
-                print(defender.getSpecialLine())
-                for key in defSpEffects:
-                    if key == "closeShield":
-                        defSpecialTriggered = True
-                        braveATK2 -= math.trunc(atkrATK2 * 0.10 * defSpEffects["closeShield"])
-
-            defStats[0] = defStats[0] - braveATK2
-
-            print(attacker.getName() + " attacks " + defender.getName() + " for " + str(braveATK2) + " damage.")
-
-            if attacker.specialCount > 0: attacker.specialCount -= (1 + atkSCCB)
-            if defender.specialCount > 0: defender.specialCount -= 1
-            if attacker.specialCount < 0: attacker.specialCount = 0
-            if defender.specialCount < 0: defender.specialCount = 0
-            if atkSpecialTriggered: attacker.specialCount = attacker.specialMax
-            if defSpecialTriggered: defender.specialCount = defender.specialMax
-
-            atkSpecialTriggered = False
-            defSpecialTriggered = False
-
-            newHPA = atkStats[0]
-            newHPD = defStats[0]
-
-            atkStats = atkInitStats[:]
-            defStats = defInitStats[:]
-
-            atkStats[0] = newHPA
-            defStats[0] = newHPD
-
-            if defStats[0] <= 0:
-                defStats[0] = 0
+            if defender.HPcur <= 0:
+                defender.HPcur = 0
                 defAlive = False
                 print(defender.getName() + " falls.")
 
     # second counterattack by defender
 
-    if (defSpdFollowUps + defSkillFollowUps > 0 and (attacker.getRange() == defender.getRange() or ignoreRng)) and atkAlive and defAlive and not cannotCounter:
-        dmgBoost = 0  # used for night sky, glimmer, astra, and deadeye
-        if defender.specialCount == 0 and defender.getSpecialType() == "Offense":
-            print(defender.getName() + " procs " + defender.getSpName() + ".")  # attack name
-            print(defender.getSpecialLine())
-            for key in defSpEffects:
-                if key == "defReduce":
-                    defSpecialTriggered = True
-                    atkStats[3] -= math.trunc(atkStats[3] * .10 * defSpEffects["defReduce"])
-                    atkStats[4] -= math.trunc(atkStats[4] * .10 * defSpEffects["defReduce"])
-                if key == "dmgBoost":
-                    defSpecialTriggered = True
-                    dmgBoost = 0.10 * defSpEffects["dmgBoost"]
+    if (defSpdFollowUps + defSkillFollowUps > 0 and (attacker.getRange() == defender.getRange() or ignoreRng)) and atkAlive and defAlive and not cannotCounter and not vantageEnabled:
 
-        defrATK2 = defStats[1] - atkStats[3 + x]
-        if defrATK2 < 0: defrATK2 = 0
+        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
 
-        defrATK2 += math.trunc(defrATK2 * dmgBoost)
-
-        if attacker.specialCount == 0 and attacker.getSpecialType() == "Defense" and attacker.getRange() == 1:
-            print(attacker.getName() + " procs " + attacker.getSpName() + ".")
-            print(attacker.getSpecialLine())
-            for key in atkSpEffects:
-                if key == "closeShield":
-                    atkSpecialTriggered = True
-                    defrATK2 -= math.trunc(defrATK2 * 0.10 * atkSpEffects["closeShield"])
-
-        atkStats[0] = atkStats[0] - defrATK2
-
-        print(defender.getName() + " attacks " + attacker.getName() + " for " + str(defrATK2) + " damage.")
-
-        if attacker.specialCount > 0: attacker.specialCount -= 1
-        if defender.specialCount > 0: defender.specialCount -= 1
-        if atkSpecialTriggered: attacker.specialCount = attacker.specialMax
-        if defSpecialTriggered: defender.specialCount = defender.specialMax
-
-        atkSpecialTriggered = True
-        defSpecialTriggered = False
-
-        newHPA = atkStats[0]
-        newHPD = defStats[0]
-
-        atkStats = atkInitStats
-        defStats = defInitStats
-
-        atkStats[0] = newHPA
-        defStats[0] = newHPD
-
-        if "absorb" in defSkills:
-            amountHealed = math.trunc(defrATK1 * 0.5)
-            defStats[0] += amountHealed
-            print(defender.getName() + " absorbs " + str(amountHealed) + " HP.")
-            if defStats[0] > defInitStats[0]: defStats[0] = defInitStats[0]
-
-        if atkStats[0] <= 0:
-            atkStats[0] = 0
+        if attacker.HPcur <= 0:
+            attacker.HPcur = 0
             atkAlive = False
             print(attacker.getName() + " falls.")
 
         if braveDEFR and atkAlive:
-            braveDEF2 = defStats[1] - atkStats[3 + x]
-            if braveDEF2 < 0: braveDEF2 = 0
-            atkStats[0] = atkStats[0] - braveDEF2
-            print(defender.getName() + " attacks " + attacker.getName() + " for " + str(braveDEF2) + " damage.")
-            if atkStats[0] <= 0:
-                atkStats[0] = 0
+
+            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x)
+
+            if attacker.HPcur <= 0:
+                attacker.HPcur = 0
                 atkAlive = False
                 print(attacker.getName() + " falls.")
 
@@ -998,7 +768,7 @@ class Hero:
             case 3: statStr = "Def"
             case 4: statStr = "Res"
 
-        print(self.name + "'s " + statStr + " was affected by " + str(num) + ".")
+        print(self.name + "'s " + statStr + " was modified by " + str(num) + ".")
 
     def chargeSpecial(self, charge):
         if charge != -1:
@@ -1404,6 +1174,8 @@ holyVestiments = Special("Holy Vestments", "If foe is 2 spaces from unit, reduce
 sacredCowl = Special("Sacred Cowl", "If foe is 2 spaces from unit, reduces damage from foe's attack by 30%.", {"distantShield": 3}, 2, SpecialType.Defense)
 aegis = Special("Aegis", "If foe is 2 spaces from unit, reduces damage from foe's attack by 50%.", {"distantShield": 5}, 3, SpecialType.Defense)
 
+# A SKILLS
+
 hp3 = Skill("HP +3", "Grants HP+3.", {"HPBoost": 3})
 hp4 = Skill("HP +4", "Grants HP+4.", {"HPBoost": 4})
 hp5 = Skill("HP +5", "Grants HP+5.", {"HPBoost": 5})
@@ -1420,23 +1192,61 @@ res1 = Skill("Resistance +1", "Grants Res+1.", {"resBoost": 1})
 res2 = Skill("Resistance +2", "Grants Res+2.", {"resBoost": 2})
 res3 = Skill("Resistance +3", "Grants Res+3.", {"resBoost": 3})
 
+hp_atk1 = Skill("HP/Atk 1", "Grants HP +3, Atk +1.", {"HPBoost":3,"atkBoost":1})
+hp_atk2 = Skill("HP/Atk 2", "Grants HP +4, Atk +2.", {"HPBoost":4,"atkBoost":2})
+hp_spd1 = Skill("HP/Spd 1", "Grants HP +3, Spd +1.", {"HPBoost":3,"spdBoost":1})
+hp_spd2 = Skill("HP/Spd 2", "Grants HP +4, Spd +2.", {"HPBoost":4,"spdBoost":2})
+hp_def1 = Skill("HP/Def 1", "Grants HP +3, Def +1.", {"HPBoost":3,"defBoost":1})
+hp_def2 = Skill("HP/Def 2", "Grants HP +4, Def +2.", {"HPBoost":4,"defBoost":2})
+hp_res1 = Skill("HP/Res 1", "Grants HP +3, Res +1.", {"HPBoost":3,"resBoost":1})
+hp_res2 = Skill("HP/Res 2", "Grants HP +4, Res +2.", {"HPBoost":4,"resBoost":2})
+
+atk_spd1 = Skill("Atk/Spd 1", "Grants Atk/Spd +1.", {"atkBoost":1, "spdBoost":1})
+atk_spd2 = Skill("Atk/Spd 2", "Grants Atk/Spd +2.", {"atkBoost":2, "spdBoost":2})
+atk_def1 = Skill("Attack/Def +1", "Grants Atk/Def +1.", {"atkBoost":1, "defBoost":1})
+atk_def2 = Skill("Attack/Def +2", "Grants Atk/Def +2.", {"atkBoost":2, "defBoost":2})
+atk_res1 = Skill("attack/Res 1", "Grants Atk/Res +1.", {"atkBoost":1, "resBoost":1})
+atk_res2 = Skill("attack/Res 2", "Grants Atk/Res +2.", {"atkBoost":2, "resBoost":2})
+
+spd_def1 = Skill("Spd/Def 1", "Grants Spd/Def +1.", {"spdBoost":1, "defBoost":1})
+spd_def2 = Skill("Spd/Def 2", "Grants Spd/Def +2.", {"spdBoost":2, "defBoost":2})
+spd_res1 = Skill("Spd/Res 1", "Grants Spd/Res +1.", {"spdBoost":1, "resBoost":1})
+spd_res2 = Skill("Spd/Res 2", "Grants Spd/Res +2.", {"spdBoost":2, "resBoost":2})
+
+def_res1 = Skill("Def/Res 1", "	Grants Def/Res +1.", {"defBoost":1, "resBoost":1})
+def_res2 = Skill("Def/Res 2", "	Grants Def/Res +2.", {"defBoost":2, "resBoost":2})
+
 fortressDef1 = Skill("Fortress Def 1", "Grants Def+3. Inflicts Atk-3.", {"defBoost": 3, "atkBoost": -3})
 fortressDef2 = Skill("Fortress Def 2", "Grants Def+4. Inflicts Atk-3.", {"defBoost": 4, "atkBoost": -3})
 fortressDef3 = Skill("Fortress Def 3", "Grants Def+5. Inflicts Atk-3.", {"defBoost": 5, "atkBoost": -3})
-
 fortressRes1 = Skill("Fortress Res 1", "Grants Res+3. Inflicts Atk-3.", {"resBoost": 3, "atkBoost": -3})
 fortressRes2 = Skill("Fortress Res 2", "Grants Res+4. Inflicts Atk-3.", {"resBoost": 4, "atkBoost": -3})
 fortressRes3 = Skill("Fortress Res 3", "Grants Res+5. Inflicts Atk-3.", {"resBoost": 5, "atkBoost": -3})
+fortressDefRes1 = Skill("Fort. Def/Res 1", "Grants Def/Res +3. Inflicts Atk -3.", {"defBoost": 3, "resBoost": 3, "atkBoost": -3})
+fortressDefRes2 = Skill("Fort. Def/Res 2", "Grants Def/Res +4. Inflicts Atk -3.", {"defBoost": 4, "resBoost": 4, "atkBoost": -3})
+fortressDefRes3 = Skill("Fort. Def/Res 3", "Grants Def/Res +6. Inflicts Atk -2.", {"defBoost": 6, "resBoost": 6, "atkBoost": -2})
 
+lifeAndDeath1 = Skill("Life and Death 1", "Grants Atk/Spd +3. Inflicts Def/Res -3.", {"atkBoost": 3, "spdBoost": 3, "defBoost": -3, "resBoost": -3})
+lifeAndDeath2 = Skill("Life and Death 2", "Grants Atk/Spd +4. Inflicts Def/Res -4.", {"atkBoost": 4, "spdBoost": 4, "defBoost": -4, "resBoost": -4})
+lifeAndDeath3 = Skill("Life and Death 3", "Grants Atk/Spd +5. Inflicts Def/Res -5.", {"atkBoost": 5, "spdBoost": 5, "defBoost": -5, "resBoost": -5})
+lifeAndDeath4 = Skill("Life and Death 4", "Grants Atk/Spd +7. Inflicts Def/Res -5.", {"atkBoost": 7, "spdBoost": 7, "defBoost": -5, "resBoost": -5})
+
+fury1 = Skill("Fury 1", "Grants Atk/Spd/Def/Res+1. After combat, deals 2 damage to unit.", {"atkBoost": 1, "spdBoost": 1, "defBoost": 1, "resBoost": 1, "selfDmg": 2})
+fury2 = Skill("Fury 2", "Grants Atk/Spd/Def/Res+2. After combat, deals 4 damage to unit.", {"atkBoost": 2, "spdBoost": 2, "defBoost": 2, "resBoost": 2, "selfDmg": 4})
 fury3 = Skill("Fury 3", "Grants Atk/Spd/Def/Res+3. After combat, deals 6 damage to unit.", {"atkBoost": 3, "spdBoost": 3, "defBoost": 3, "resBoost": 3, "selfDmg": 6})
+fury4 = Skill("Fury 4", "Grants Atk/Spd/Def/Res+4. After combat, deals 8 damage to unit.", {"atkBoost": 4, "spdBoost": 4, "defBoost": 4, "resBoost": 4, "selfDmg": 8})
 
-waterBoost3 = Skill("Water Boost 3", "At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.", {"waterBoost": 3})
+solidGround1 = Skill("Solid Ground 1", "Grants Atk/Def+3. Inflicts Res-3.",{"atkBoost": 3, "defBoost": 3, "resBoost": -3})
+solidGround2 = Skill("Solid Ground 2", "Grants Atk/Def+4. Inflicts Res-4.",{"atkBoost": 4, "defBoost": 4, "resBoost": -4})
+solidGround3 = Skill("Solid Ground 3", "Grants Atk/Def+5. Inflicts Res-5.",{"atkBoost": 5, "defBoost": 5, "resBoost": -5})
+solidGround4 = Skill("Solid Ground 4", "Grants Atk/Def+7. Inflicts Res-5.",{"atkBoost": 7, "defBoost": 7, "resBoost": -5})
 
-heavyBlade3 = Skill("Heavy Blade 3", "If unit's Atk > foe's Atk, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)", {"heavyBlade": 3})
-flashingBlade3 = Skill("Flashing Blade 3", "If unit's Spd > foe's Spd, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)", {"flashingBlade": 3})
-# HIGHEST TRIANGLE ADEPT LEVEL USED
-# SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
-# HIGHEST LEVEL IS BASICALLY MAX
+stillWater1 = Skill("Still Water 1", "Grants Atk/Res+3. Inflicts Def-3.",{"atkBoost": 3, "resBoost": 3, "defBoost": -3})
+stillWater2 = Skill("Still Water 2", "Grants Atk/Res+4. Inflicts Def-4.",{"atkBoost": 4, "resBoost": 4, "defBoost": -4})
+stillWater3 = Skill("Still Water 3", "Grants Atk/Res+5. Inflicts Def-5.",{"atkBoost": 5, "resBoost": 5, "defBoost": -5})
+stillWater4 = Skill("Still Water 4", "Grants Atk/Res+7. Inflicts Def-5.",{"atkBoost": 7, "resBoost": 7, "defBoost": -5})
+
+
 deathBlow1 = Skill("Death Blow 1", "If unit initiates combat, grants Atk+2 during combat.", {"atkBlow": 1})
 deathBlow2 = Skill("Death Blow 2", "If unit initiates combat, grants Atk+4 during combat.", {"atkBlow": 2})
 deathBlow3 = Skill("Death Blow 3", "If unit initiates combat, grants Atk+6 during combat.", {"atkBlow": 3})
@@ -1463,10 +1273,34 @@ wardingStance1 = Skill("Warding Stance 1", "If foe initiates combat, grants Res+
 wardingStance2 = Skill("Warding Stance 2", "If foe initiates combat, grants Res+4 during combat.", {"resStance": 2})
 wardingStance3 = Skill("Warding Stance 3", "If foe initiates combat, grants Res+6 during combat.", {"resStance": 3})
 
+waterBoost3 = Skill("Water Boost 3", "At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.", {"waterBoost": 3})
+
+heavyBlade3 = Skill("Heavy Blade 3", "If unit's Atk > foe's Atk, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)", {"heavyBlade": 3})
+flashingBlade3 = Skill("Flashing Blade 3", "If unit's Spd > foe's Spd, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)", {"flashingBlade": 3})
+# HIGHEST TRIANGLE ADEPT LEVEL USED
+# SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
+# HIGHEST LEVEL IS BASICALLY MAX
+
+triangleAdept1 = Skill("Triangle Adept 1", "If unit has weapon-triangle advantage, boosts Atk by 10%. If unit has weapon-triangle disadvantage, reduces Atk by 10%.", {"triAdeptS": 1})
+triangleAdept2 = Skill("Triangle Adept 2", "If unit has weapon-triangle advantage, boosts Atk by 15%. If unit has weapon-triangle disadvantage, reduces Atk by 15%.", {"triAdeptS": 2})
 triangleAdept3 = Skill("Triangle Adept 3", "If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.", {"triAdeptS": 3})
 
 closeCounter = Skill("Close Counter", "Unit can counterattack regardless of foe's range.", {"cCounter": 0})
 distanctCounter = Skill("Distant Counter", "Unit can counterattack regardless of foe's range.", {"dCounter": 0})
+
+svalinnShield = Skill("Svalinn Shield", "Neutralizes \"effective against armored\" bonuses.", {"nullEffArm": 0})
+graniShield = Skill("Grani's Shield", "Neutralizes \"effective against cavalry\" bonuses.", {"nullEffCav": 0})
+ioteShield = Skill("Iote's Shield", "Neutralizes \"effective against fliers\" bonuses.", {"nullEffFly": 0})
+
+bonusDoubler1 = Skill("Bonus Doubler 1", "Grants bonus to Atk/Spd/Def/Res during combat = 50% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler":1})
+bonusDoubler2 = Skill("Bonus Doubler 2", "Grants bonus to Atk/Spd/Def/Res during combat = 75% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler":2})
+bonusDoubler3 = Skill("Bonus Doubler 3", "Grants bonus to Atk/Spd/Def/Res during combat = current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler":3})
+
+sorceryBlade1 = Skill("Sorcery Blade 1", "At start of combat, if unit’s HP = 100% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade":1})
+sorceryBlade2 = Skill("Sorcery Blade 2", "At start of combat, if unit’s HP ≥ 50% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade":1})
+sorceryBlade3 = Skill("Sorcery Blade 3", "At start of combat, if unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade":1})
+
+# B SKILLS
 
 swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"swordBreak": 3})
 lanceBreaker3 = Skill("Lancebreaker 3", "If unit's HP ≥ 50% in combat against a lance foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"lanceBreak": 3})
@@ -1504,199 +1338,64 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 #               blessing):
 
 
-abel = Hero("Abel", "Abel", 0, 1,
-            39, 33, 32, 25, 25, "Lance", 1,
-            pantherLance, None, aegis, hp5, swordBreaker3, None, None,
-            None)
-anna = Hero("Anna", "Anna", 0, 0,
-            41, 29, 38, 22, 28, "Axe", 0,
-            noatun, None, astra, None, vantage3, None, None,
-            None)
-alfonse = Hero("Alfonse", "Alfonse", 0, 0,
-            43, 35, 25, 32, 22, "Sword", 0,
-            folkvangr, None, sol, deathBlow3, None, None, None,
-            None)
-arthur = Hero("Arthur", "F!Arthur", 0, 14,
-            43, 32, 29, 30, 24, "Axe", 0,
-            arthurAxe, None, None, hp5, lanceBreaker3, None, None,
-            None)
-azama = Hero("Azama", "Azama", 0, 14,
-            43, 21, 26, 32, 25, "Staff", 0,
-            painPlus, None, None, None, None, None, None,
-            None)
-azura = Hero("Azura", "Azura", 0, 14,
-            36, 31, 33, 21, 28, "Lance", 0,
-            sapphireLancePlus, None, None, spd3, None, None, None,
-            None)
-barst = Hero("Barst", "Barst", 0, 1,
-            46, 33, 32, 30, 17, "Axe", 0,
-            devilAxe, None, bonfire, None, None, None, None,
-            None)
-bartre = Hero("Bartre", "Bartre", 0, 6,
-            49, 36, 25, 33, 13, "Axe", 0,
-            axeOfVirility, None, None, fury3, None, None, None,
-            None)
-beruka = Hero("Beruka", "Beruka", 0, 14,
-            46, 29, 23, 37, 22, "Axe", 2,
-            berukaAxe, None, glimmer, None, None, None, None,
-            None)
-caeda = Hero("Caeda", "Caeda", 0, 1,
-            36, 25, 37, 24, 34, "Sword", 2,
-            wingSword, None, None, dartingBlow3, None, None, None,
-            None)
-cain = Hero("Cain", "Cain", 0, 1,
-            42, 32, 32, 27, 21, "Sword", 1,
-            bullBlade, None, None, None, None, None, None,
-            None)
-camilla = Hero("Camilla", "Camilla", 0, 14,
-            37, 30, 32, 28, 31, "Axe", 2,
-            camillaAxe, None, draconicAura, dartingBlow3, None, None, None,
-            None)
-catria = Hero("Catria", "Catria", 0, 1,
-            39, 31, 34, 29, 25, "Lance", 2,
-            whitewingLance, None, moonbow, armoredBlow3, None, None, None,
-            None)
-cecilia = Hero("Cecilia", "Cecilia", 0, 6,
-            36, 32, 25, 22, 29, "GTome", 1,
-            tomeOfOrder, None, None, atk3, None, None, None,
-            None)
-cherche = Hero("Cherche", "Cherche", 0, 13,
-            46, 38, 25, 32, 16, "Axe", 2,
-            chercheAxe, None, None, atk3, None, None, None,
-            None)
-chrom = Hero("Chrom", "Chrom", 0, 13,
-            47, 37, 25, 31, 17, "Sword", 0,
-            awkFalchion, None, aether, None, None, None, None,
-            None)
-cordelia = Hero("Cordelia", "Cordelia", 0, 13,
-            40, 35, 35, 22, 25, "Lance", 2,
-            cordeliaLance, None, moonbow, triangleAdept3, None, None, None,
-            None)
-corrinF = Hero("Corrin", "F!Corrin", 0, 14,
-            41, 27, 34, 34, 21, "BDragon", 0,
-            gloomBreath, None, None, deathBlow3, None, None, None,
-            None)
-eliwood = Hero("Eliwood", "Eliwood", 0, 7,
-            39, 31, 30, 23, 32, "Sword", 1,
-            durandal, None, sacredCowl, None, axeBreaker3, None, None,
-            None)
-hawkeye = Hero("Hawkeye", "Hawkeye", 0, 6,
-            45, 33, 22, 28, 30, "Axe", 0,
-            guardianAxe, None, None, deathBlow3, None, None, None,
-            None)
-hector = Hero("Hector", "Hector", 0, 7,
-            52, 36, 24, 37, 19, "Axe", 3,
-            armads, None, pavise, distanctCounter, None, goadArmor, None,
-            None)
-henry = Hero("Henry", "Henry", 0, 13,
-            45, 23, 22, 32, 25, "RTome", 0,
-            corvusTome, None, ignis, None, gtomeBreaker3, None, None,
-            None)
-lilina = Hero("Lilina", "Lilina", 0, 6,
-            35, 37, 25, 19, 31, "RTome", 0,
-            forblaze, None, moonbow, atk3, None, None, None,
-            None)
-lonqu = Hero("Lon'qu", "Lon'qu", 0, 13,
-            45, 29, 39, 22, 22, "Sword", 0,
-            solitaryBlade, None, glimmer, spd3, vantage3, None, None,
-            None)
-marth = Hero("Marth", "Marth", 0, 1,
-            41, 31, 34, 29, 23, "Sword", 0,
-            marthFalchion, None, draconicAura, fury3, quickRiposte, None, None,
-            None)
-nino = Hero("Nino", "Nino", 0, 7,
-            33, 33, 36, 19, 26, "GTome", 0,
-            irisTome, None, None, res3, None, None, None,
-            None)
-nowi = Hero("Nowi", "Nowi", 0, 13,
-            45, 34, 27, 30, 27, "BDragon", 0,
-            purifyingBreath, None, None, def3, None, None, None,
-            None)
-robinM = Hero("Robin", "M!Robin", 0, 13,
-            40, 29, 29, 29, 22, "BTome", 0,
-            tacticalBolt, None, bonfire, None, None, None, None,
-            None)
-roy = Hero("Roy", "Roy", 0, 6,
-            44, 30, 31, 25, 28, "Sword", 0,
-            bindingBlade, None, moonbow, triangleAdept3, None, None, None,
-            None)
-serra = Hero("Serra", "Serra", 0, 7,
-            33, 30, 31, 21, 33, "Staff", 0,
-            absorbPlus, None, None, None, None, None, None,
-            None)
-sharena = Hero("Sharena", "Sharena", 0, 0,
-            43, 32, 32, 29, 22, "Lance", 0,
-            fensalir, None, None, spd3, None, None, None,
-            None)
-takumi = Hero("Takumi", "Takumi", 0, 14,
-            40, 32, 33, 25, 18, "CBow", 0,
-            fujinYumi, None, None, closeCounter, None, None, None,
-            None)
-xander = Hero("Xander", "Xander", 0, 14,
-            44, 32, 24, 37, 17, "Sword", 1,
-            siegfried, None, noontime, armoredBlow3, axeBreaker3, None, None,
-            None)
+abel = Hero("Abel", "Abel", 0, 1, 39, 33, 32, 25, 25, "Lance", 1, pantherLance, None, aegis, hp5, swordBreaker3, None, None, None)
+anna = Hero("Anna", "Anna", 0, 0, 41, 29, 38, 22, 28, "Axe", 0, noatun, None, astra, None, vantage3, None, None, None)
+alfonse = Hero("Alfonse", "Alfonse", 0, 0, 43, 35, 25, 32, 22, "Sword", 0, folkvangr, None, sol, deathBlow3, None, None, None, None)
+arthur = Hero("Arthur", "F!Arthur", 0, 14, 43, 32, 29, 30, 24, "Axe", 0, arthurAxe, None, None, hp5, lanceBreaker3, None, None, None)
+azama = Hero("Azama", "Azama", 0, 14, 43, 21, 26, 32, 25, "Staff", 0, painPlus, None, None, None, None, None, None, None)
+azura = Hero("Azura", "Azura", 0, 14, 36, 31, 33, 21, 28, "Lance", 0, sapphireLancePlus, None, None, spd3, None, None, None, None)
+barst = Hero("Barst", "Barst", 0, 1, 46, 33, 32, 30, 17, "Axe", 0, devilAxe, None, bonfire, None, None, None, None, None)
+bartre = Hero("Bartre", "Bartre", 0, 6, 49, 36, 25, 33, 13, "Axe", 0, axeOfVirility, None, None, fury3, None, None, None, None)
+beruka = Hero("Beruka", "Beruka", 0, 14, 46, 29, 23, 37, 22, "Axe", 2, berukaAxe, None, glimmer, None, None, None, None, None)
+caeda = Hero("Caeda", "Caeda", 0, 1, 36, 25, 37, 24, 34, "Sword", 2, wingSword, None, None, dartingBlow3, None, None, None, None)
+cain = Hero("Cain", "Cain", 0, 1, 42, 32, 32, 27, 21, "Sword", 1, bullBlade, None, None, None, None, None, None, None)
+camilla = Hero("Camilla", "Camilla", 0, 14, 37, 30, 32, 28, 31, "Axe", 2, camillaAxe, None, draconicAura, dartingBlow3, None, None, None, None)
+catria = Hero("Catria", "Catria", 0, 1, 39, 31, 34, 29, 25, "Lance", 2, whitewingLance, None, moonbow, armoredBlow3, None, None, None, None)
+cecilia = Hero("Cecilia", "Cecilia", 0, 6, 36, 32, 25, 22, 29, "GTome", 1, tomeOfOrder, None, None, atk3, None, None, None, None)
+cherche = Hero("Cherche", "Cherche", 0, 13, 46, 38, 25, 32, 16, "Axe", 2, chercheAxe, None, None, atk3, None, None, None, None)
+chrom = Hero("Chrom", "Chrom", 0, 13, 47, 37, 25, 31, 17, "Sword", 0, awkFalchion, None, aether, None, None, None, None, None)
+cordelia = Hero("Cordelia", "Cordelia", 0, 13, 40, 35, 35, 22, 25, "Lance", 2, cordeliaLance, None, moonbow, triangleAdept3, None, None, None, None)
+corrinF = Hero("Corrin", "F!Corrin", 0, 14, 41, 27, 34, 34, 21, "BDragon", 0, gloomBreath, None, None, deathBlow3, None, None, None, None)
+eliwood = Hero("Eliwood", "Eliwood", 0, 7, 39, 31, 30, 23, 32, "Sword", 1, durandal, None, sacredCowl, None, axeBreaker3, None, None, None)
+hawkeye = Hero("Hawkeye", "Hawkeye", 0, 6, 45, 33, 22, 28, 30, "Axe", 0, guardianAxe, None, None, deathBlow3, None, None, None, None)
+hector = Hero("Hector", "Hector", 0, 7, 52, 36, 24, 37, 19, "Axe", 3, armads, None, pavise, distanctCounter, None, goadArmor, None, None)
+henry = Hero("Henry", "Henry", 0, 13, 45, 23, 22, 32, 25, "RTome", 0, corvusTome, None, ignis, None, gtomeBreaker3, None, None, None)
+lilina = Hero("Lilina", "Lilina", 0, 6, 35, 37, 25, 19, 31, "RTome", 0, forblaze, None, moonbow, atk3, None, None, None, None)
+lonqu = Hero("Lon'qu", "Lon'qu", 0, 13, 45, 29, 39, 22, 22, "Sword", 0, solitaryBlade, None, glimmer, spd3, vantage3, None, None, None)
+marth = Hero("Marth", "Marth", 0, 1, 41, 31, 34, 29, 23, "Sword", 0, marthFalchion, None, draconicAura, fury3, quickRiposte, None, None, None)
+nino = Hero("Nino", "Nino", 0, 7, 33, 33, 36, 19, 26, "GTome", 0, irisTome, None, None, res3, None, None, None, None)
+nowi = Hero("Nowi", "Nowi", 0, 13, 45, 34, 27, 30, 27, "BDragon", 0, purifyingBreath, None, None, def3, None, None, None, None)
+robinM = Hero("Robin", "M!Robin", 0, 13, 40, 29, 29, 29, 22, "BTome", 0, tacticalBolt, None, bonfire, None, None, None, None, None)
+roy = Hero("Roy", "Roy", 0, 6, 44, 30, 31, 25, 28, "Sword", 0, bindingBlade, None, moonbow, triangleAdept3, None, None, None, None)
+serra = Hero("Serra", "Serra", 0, 7, 33, 30, 31, 21, 33, "Staff", 0, absorbPlus, None, None, None, None, None, None, None)
+sharena = Hero("Sharena", "Sharena", 0, 0, 43, 32, 32, 29, 22, "Lance", 0, fensalir, None, None, spd3, None, None, None, None)
+takumi = Hero("Takumi", "Takumi", 0, 14, 40, 32, 33, 25, 18, "CBow", 0, fujinYumi, None, None, closeCounter, vantage3, None, None, None)
+xander = Hero("Xander", "Xander", 0, 14, 44, 32, 24, 37, 17, "Sword", 1, siegfried, None, noontime, armoredBlow3, axeBreaker3, None, None, None)
+eirika = Hero("Eirika", "Eirika", 0, 8, 40, 30, 34, 27, 23, "Sword", 0, marthFalchion, None, None, None, None, None, None, None)
+ephraim = Hero("Ephraim", "Ephraim", 0, 8, 45, 35, 25, 32, 20, "Lance", 0, siegmundEff, None, moonbow, deathBlow3, None, None, None, None)
+seliph = Hero("Seliph", "Seliph", 0, 4, 40, 30, 30, 30, 20, "Sword", 0, marthFalchion, None, None, None, None, None, None, None)
+julia = Hero("Julia", "Julia", 0, 4, 38, 35, 26, 17, 32, "GTome", 0, naga, None, dragonFang, res3, None, None, None, None)
+klein = Hero("Klein", "Klein", 0, 14, 37, 32, 35, 20, 24, "CBow", 1, argentBow, None, draconicAura, deathBlow3, quickRiposte, None, None, None)
 
-eirika = Hero("Eirika", "Eirika", 0, 8,
-            40, 30, 34, 27, 23, "Sword", 0,
-            marthFalchion, None, None, None, None, None, None,
-            None)
-ephraim = Hero("Ephraim", "Ephraim", 0, 8,
-            45, 35, 25, 32, 20, "Lance", 0,
-            siegmundEff, None, moonbow, deathBlow3, None, None, None,
-            None)
-seliph = Hero("Seliph", "Seliph", 0, 4,
-            40, 30, 30, 30, 20, "Sword", 0,
-            marthFalchion, None, None, None, None, None, None,
-            None)
-julia = Hero("Julia", "Julia", 0, 4,
-            38, 35, 26, 17, 32, "GTome", 0,
-            naga, None, dragonFang, res3, None, None, None,
-            None)
-
-klein = Hero("Klein", "Klein", 0, 6,
-            40, 31, 33, 20, 24, "CBow", 0,
-            argentBow, None, glacies, deathBlow3, quickRiposte, None, None,
-            None)
 #sanaki = Hero("Sanaki", 30, 30, 30, 20, 20, "RTome", 0, None, None, None, None, None)
 # NOT YET HE'S GONNA RUIN EVERYTHING reinhardt = Hero("")
 #olwen = Hero("Olwen", 35, 30, 30, 20, 15, "BTome", 1, None, None, None, None, None)
 #eldigan = Hero("Eldigan", 40, 30, 25, 30, 15, "Sword", 1, None, None, None, None, None)
 #lachesis = Hero("Lachesis", 30, 30, 30, 15, 20, "Staff", 0, None, None, None, None, None)
 
-alm = Hero("Alm", "Alm", 0, 15,
-            45, 33, 30, 28, 22, "Sword", 0,
-            almFalchion, None, draconicAura, atk3, windsweep3, None, None,
-            None)
+alm = Hero("Alm", "Alm", 0, 15, 45, 33, 30, 28, 22, "Sword", 0, almFalchion, None, draconicAura, atk3, windsweep3, None, None, None)
 
-ike = Hero("Ike", "Ike", 0, 9,
-            42, 35, 31, 32, 18, "Sword", 1,
-            ragnell, None, aether, heavyBlade3, swordBreaker3, None, None,
-            None)
+ike = Hero("Ike", "Ike", 0, 9, 42, 35, 31, 32, 18, "Sword", 1, ragnell, None, aether, heavyBlade3, swordBreaker3, None, None, None)
 
-berkut = Hero("Berkut", "Berkut", 0, 15,
-            43, 34, 22, 31, 24, "Lance", 1,
-            darkRoyalSpear, None, None, waterBoost3, None, wardCavalry, None,
-            None)
-clive = Hero("Clive", "Clive", 0, 15,
-            45, 33, 25, 32, 19, "Lance", 1,
-            lordlyLance, None, escutcheon, def3, None, None, None,
-            None)
+berkut = Hero("Berkut", "Berkut", 0, 15, 43, 34, 22, 31, 24, "Lance", 1, darkRoyalSpear, None, None, waterBoost3, None, wardCavalry, None, None)
 
-innes = Hero("Innes", "Innes", 0, 8,
-            35, 33, 34, 14, 31, "CBow", 0,
-            nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None,
-            None)
+clive = Hero("Clive", "Clive", 0, 15, 45, 33, 25, 32, 19, "Lance", 1, lordlyLance, None, escutcheon, def3, None, None, None, None)
 
-mia = Hero("Mia", "Mia", 0, 9,
-            38, 32, 40, 28, 25, "Sword", 0,
-            resoluteBlade, None, noontime, flashingBlade3, vantage3, None, None,
-            None)
+innes = Hero("Innes", "Innes", 0, 8, 35, 33, 34, 14, 31, "CBow", 0, nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None, None)
 
-shezM = Hero("Shez", "Shez", 0, 16,
-            40, 43, 41, 37, 26, "Sword", 0,
-            crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None,
-            None)
+mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, noontime, flashingBlade3, vantage3, None, None, None)
+
+shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None, None)
 
 # print(str(len(heroes)) + " Heroes present. " + str(927-len(heroes)) + " remain to be added.")
 
@@ -1808,15 +1507,15 @@ abel.addSpecialLines("\"Make your peace.\"",
 #playerUnits = [marth, robinM, takumi, ephraim]
 #enemyUnits = [nowi, alm, hector, bartre]
 
-alpha = cordelia
-omega = alfonse
+alpha = nowi
+omega = takumi
+
+omega.inflictDamage(12)
 
 #alpha.inflict(Status.Panic)
-alpha.inflictStat(1,+7)
+#alpha.inflictStat(1,+7)
 alpha.inflictStat(3,-7)
-alpha.chargeSpecial(1)
-print(alpha.specialCount)
-print(alpha.specialMax)
+alpha.chargeSpecial(0)
 
 r = simulate_combat(alpha,omega,False)
 print(r)
