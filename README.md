@@ -8,4 +8,5 @@ presented in both PVP and PVE. Lots of systems are at play that causes the playe
 Now let's take all that and throw it into the trash.
 
 This thing beats the game for you. No, really. You give it your units, you give it a map, program solves it for you
-and gives you what moves to make. The death of Fire Emblem fr
+and gives you what moves to make. Does this defeat the purpose of strategizing the series is known for? What strategy?
+This game has *insert meta unit here*, how can anything be fair.
