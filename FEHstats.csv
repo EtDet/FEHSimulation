@@ -1,7 +1,7 @@
 ﻿IntName,Name,HP,Atk,Spd,Def,Res,Movement,Weapon Type,Game,HP Grow,Atk Grow,Spd Grow,Def Grow,Res Grow
 Abel,Abel,39,33,32,25,25,1,Lance,1,50%,60%,55%,40%,45%
 Aelfric,Aelfric,43,40,31,20,37,0,RTome,16,55%,70%,55%,35%,65%
-Alear,Alear,40,43,46,32,26,0,Sword,17,50%,70%,70%,65%,50%
+F!Alear,Alear,40,43,46,32,26,0,Sword,17,50%,70%,70%,65%,50%
 NY!Alfonse,Alfonse,41,38,17,35,30,0,BTome,0,50%,70%,25%,70%,50%
 Alfonse,Alfonse,43,35,25,32,22,0,Sword,0,55%,60%,45%,55%,40%
 SP!Alfonse,Alfonse,41,35,33,30,18,1,Axe,0,50%,60%,60%,55%,30%
