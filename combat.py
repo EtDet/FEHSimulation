@@ -288,7 +288,8 @@ def simulate_combat(attacker, defender, isInSim):
 
     # WINDSWEEP CHECK
 
-    if doWindsweepCheck and atkStats[2] > defStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1: cannotCounter = True
+    if doWindsweepCheck and atkStats[2] > defStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1:
+        cannotCounter = True
 
     # EFFECTIVENESS CHECK
 
@@ -517,131 +518,107 @@ def simulate_combat(attacker, defender, isInSim):
             if stkSpecialTriggered and "healSelf" in stkSpEffects: print(striker.getName() + " restores " + str(amountHealed) + " HP.")
             if striker.HPcur > stkStats[0]: striker.HPcur = stkStats[0]
 
-    # START OF COMBAT
-    ###################################################################################################################
+    # COMPUTE TURN ORDER
 
-    #vantageEnabled = vantageEnabled
     cannotCounter2 = cannotCounter or not(attacker.getRange() == defender.getRange() and ignoreRng)
-    braveATKR
-    braveDEFR
     followupA = atkSpdFollowUps + atkSkillFollowUps > 0
     followupD = defSpdFollowUps + defSkillFollowUps > 0
     desperateA = False
     desperateD = False
 
-    
+    if vantageEnabled:
+        startString = "DA"
+        if followupD:
+            startString += "D"
+        if followupA:
+            startString += "A"
+    else:
+        startString = "AD"
+        if followupA:
+            startString += "A"
+        if followupD:
+            startString += "D"
 
-    # vantage attack by defender
-    if vantageEnabled and not cannotCounter2:
-        if defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
-        if defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
+    if startString[0] == 'A':
+        firstCheck = desperateA
+        secondCheck = desperateD
+    else:
+        firstCheck = desperateD
+        secondCheck = desperateA
 
-        print(defender.getName() + " activates Vantage.")
+    if firstCheck:
+        startString = move_letters(startString, startString[0])
+    if secondCheck:
+        startString = move_letters(startString, set(["A", "D"]).difference([startString[0]]).pop())
 
-        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
+    newString = ""
+
+    # it makes zero sense how two D's need to be added, but only 1 A, but I don't care it works
+    for c in startString:
+        if c == 'A' and braveATKR:
+            newString += c
+        if c == 'D' and braveDEFR:
+            newString += c * 2
+        else:
+            newString += c
+
+    startString = newString
+
+    startString2 = startString
+    if cannotCounter2: startString2 = startString.replace("D", "")
+
+
+    attackList = []
+    A_Count = 0
+    D_Count = 0
+    i = 0
+
+    while i < len(startString2):
+        if startString2[i] == "A":
+            A_Count += 1
+            isFollowUp = A_Count == 2 and followupA and not braveATKR or A_Count in [3, 4] and braveATKR
+            isConsecutive = True if A_Count >= 2 and startString2[i - 1] == "A" else False
+            attackList.append(Attack(0, isFollowUp, isConsecutive, A_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
+        else:
+            D_Count += 1
+            isFollowUp = D_Count == 2 and followupD and not braveDEFR or D_Count in [3, 4] and braveDEFR
+            isConsecutive = True if D_Count >= 2 and startString2[i - 1] == "D" else False
+            attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
+        i += 1
+
+    # PERFORM ATTACKS
+
+    i = 0
+    while i < len(attackList) and atkAlive and defAlive:
+        curAtk = attackList[i]
+
+        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
+        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoOtherDmgCheck == True: atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
+        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
+        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
+
+        roles = [attacker, defender]
+        effects = [atkSpEffects, defSpEffects]
+        stats = [atkStats, defStats]
+        checkedDefs = [r, x]
+        gains = [attackerGainWhenAttacking, defenderGainWhenAttacking, defenderGainWhenAttacked, attackerGainWhenAttacked]
+
+        spongebob = curAtk.attackOwner
+        patrick = int(not curAtk.attackOwner)
+
+        attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick], checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2])
 
         if attacker.HPcur <= 0:
             attacker.HPcur = 0
             atkAlive = False
             print(attacker.getName() + " falls.")
-
-        if braveDEFR and atkAlive:
-            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
-
-            if attacker.HPcur <= 0:
-                attacker.HPcur = 0
-                atkAlive = False
-                print(attacker.getName() + " falls.")
-
-    # first attack by attacker
-
-    if atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
-    if atkDoOtherDmgCheck == True: atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
-
-    # first attack by attacker
-    if atkAlive:
-
-        attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r, attackerGainWhenAttacking, defenderGainWhenAttacked)
 
         if defender.HPcur <= 0:
             defender.HPcur = 0
             defAlive = False
             print(defender.getName() + " falls.")
 
-        # first attack by attacker if brave effect
-        if braveATKR and defAlive:
-
-            attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r, attackerGainWhenAttacking, defenderGainWhenAttacked)
-
-            if defender.HPcur <= 0:
-                defender.HPcur = 0
-                defAlive = False
-                print(defender.getName() + " falls.")
-
-    # first counterattack by defender
-
-    if (not cannotCounter2 and atkAlive and defAlive) and (not vantageEnabled or vantageEnabled and followupD):
-
-        if defDoSelfDmgCheck and not vantageEnabled: defSelfDmg += defSkills["atkOnlySelfDmg"]
-        if defDoOtherDmgCheck and not vantageEnabled: defOtherDmg += defSkills["atkOnlyOtherDmg"]
-
-        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
-
-        if attacker.HPcur <= 0:
-            attacker.HPcur = 0
-            atkAlive = False
-            print(attacker.getName() + " falls.")
-
-        if braveDEFR and atkAlive:
-            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
-
-            if attacker.HPcur <= 0:
-                attacker.HPcur = 0
-                atkAlive = False
-                print(attacker.getName() + " falls.")
-
-    # second attack by attacker
-
-    if followupA and atkAlive and defAlive:
-
-        attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r, attackerGainWhenAttacking, defenderGainWhenAttacked)
-
-        if defender.HPcur <= 0:
-            defender.HPcur = 0
-            defAlive = False
-            print(defender.getName() + " falls.")
-
-        if braveATKR and defAlive:
-
-            attack(attacker, defender, atkSpEffects, defSpEffects, atkStats, defStats, r, attackerGainWhenAttacking, defenderGainWhenAttacked)
-
-            if defender.HPcur <= 0:
-                defender.HPcur = 0
-                defAlive = False
-                print(defender.getName() + " falls.")
-
-    # second counterattack by defender
-
-    if followupD and not cannotCounter2 and atkAlive and defAlive and not vantageEnabled:
-
-        attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
-
-        if attacker.HPcur <= 0:
-            attacker.HPcur = 0
-            atkAlive = False
-            print(attacker.getName() + " falls.")
-
-        if braveDEFR and atkAlive:
-
-            attack(defender, attacker, defSpEffects, atkSpEffects, defStats, atkStats, x, defenderGainWhenAttacking, attackerGainWhenAttacked)
-
-            if attacker.HPcur <= 0:
-                attacker.HPcur = 0
-                atkAlive = False
-                print(attacker.getName() + " falls.")
-
-    # attacker.specialCount = attacker.specialCount
-    # defender.specialCount = defender.specialCount
+        i += 1
 
     if atkAlive and atkSelfDmg != 0 or defOtherDmg != 0:
         atkStats[0] -= (atkSelfDmg + defOtherDmg)
@@ -1789,11 +1766,9 @@ ike.addSpecialLines("\"I won't let anyone die!\"",
 # playerUnits = [marth, robinM, takumi, ephraim]
 # enemyUnits = [nowi, alm, hector, bartre]
 
-alpha = roy
-omega = hector
-
-
-# omega.inflictDamage(12)
+alpha = barst
+omega = xander
+omega.inflictDamage(12)
 
 # alpha.inflict(Status.Panic)
 # alpha.inflictStat(1,+7)
