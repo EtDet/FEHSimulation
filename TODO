@@ -5,9 +5,11 @@
 
 ---------------------------------------- COMBAT ----------------------------------------
 
-1. Passive Damage Reduction
-2. Added True Damage
+1. % Damage Reduction
+2. True Damage addition/reduction
 3. Special-Enabled True Damage (Atk/Spd Finish)
+4. More complex specials
+5. Data to Skill implementation
 
 ----------------------------------------- FIELD ----------------------------------------
 
