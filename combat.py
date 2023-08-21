@@ -91,15 +91,18 @@ def simulate_combat(attacker, defender, isInSim):
     defenderGainWhenAttacking = 0
     defenderGainWhenAttacked = 0
 
-    atkHit1Reduction = 1
+    atkHit1Reduction = 1 # how much the attacker's first hit is reduced by
     atkHit2Reduction = 1
     atkHit3Reduction = 1
     atkHit4Reduction = 1
 
-    defHit1Reduction = 1
+    defHit1Reduction = 1 # how much the defender's first hit is reduced by
     defHit2Reduction = 1
     defHit3Reduction = 1
     defHit4Reduction = 1
+
+    atkDmgReduFactor = 1
+    defDmgReduFector = 1
 
     # true damage when attacking
     atkFixedTrueDmgBoost = 0
@@ -224,31 +227,31 @@ def simulate_combat(attacker, defender, isInSim):
 
     if "BraveDW" in defSkills or "BraveBW" in defSkills: braveDEFR = True
 
+    if "atkOnlySelfDmg" in defSkills: defDoSelfDmgCheck = True
+    if "atkOnlyOtherDmg" in defSkills: defDoOtherDmgCheck = True
+    if "selfDmg" in defSkills: defSelfDmg += defSkills["selfDmg"]
+
+    if "QRW" in defSkills: defSkillFollowUps += 1
+    if "QRS" in defSkills: defSkillFollowUps += 1
+
+    if "swordBreak" in defSkills and attacker.wpnType == "Sword": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "lanceBreak" in defSkills and attacker.wpnType == "Lance": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "axeBreak" in defSkills and attacker.wpnType == "Axe": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "rtomeBreak" in defSkills and attacker.wpnType == "RTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "btomeBreak" in defSkills and attacker.wpnType == "BTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "gtomeBreak" in defSkills and attacker.wpnType == "GTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "cBowBreak" in defSkills and attacker.wpnType == "CBow": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+    if "cDaggerBreak" in defSkills and attacker.wpnType == "CDagger": defSkillFollowUps += 1; atkSkillFollowUps -= 1
+
+    if "spDmgAdd" in defSkills: defFixedSpDmgBoost += defSkills["spDmgAdd"]
+
+    if "vantage" in defSkills and defender.HPcur / defStats[0] <= 0.75 - (0.25 * (3 - defSkills["vantage"])):
+        vantageEnabled = True
+
+    if "cancelTA" in defSkills: defCA = defSkills["cancelTA"]
+
+
     for key in defSkills:
-
-        if key == "spDmgAdd": defFixedSpDmgBoost += defSkills[key]
-
-        if key == "atkOnlySelfDmg": defDoSelfDmgCheck = True
-        if key == "atkOnlyOtherDmg": defDoOtherDmgCheck = True
-        if key == "selfDmg": defSelfDmg += defSkills[key]
-
-        if key == "QRW" or key == "QRS": defSkillFollowUps += 1
-
-        if key == "swordBreak" and attacker.wpnType == "Sword": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "lanceBreak" and attacker.wpnType == "Lance": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "axeBreak" and attacker.wpnType == "Axe": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "rtomeBreak" and attacker.wpnType == "RTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "btomeBreak" and attacker.wpnType == "BTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "gtomeBreak" and attacker.wpnType == "GTome": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "cBowBreak" and attacker.wpnType == "CBow": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-        if key == "cDaggerBreak" and attacker.wpnType == "CDagger": defSkillFollowUps += 1; atkSkillFollowUps -= 1
-
-        if key == "vantage":
-            if defender.HPcur / defStats[0] <= 0.75 - (0.25 * (3 - defSkills["vantage"])):
-                vantageEnabled = True
-
-        if key == "cancelTA":
-            defCA = defSkills[key]
 
         if key == "healSelf": defSpEffects.update({"healSelf": defSkills[key]})
         if key == "defReduce": defSpEffects.update({"defReduce": defSkills[key]})
@@ -410,13 +413,7 @@ def simulate_combat(attacker, defender, isInSim):
     atkAlive = True
     defAlive = True
 
-    # damage reduction per hit
 
-    if "shez!" in atkSkills and attacker.HPcur / atkStats[0] >= 0.4:
-        atkHit1Reduction = atkHit1Reduction - 0.4
-
-    if "shez!" in defSkills and defender.HPcur / atkStats[0] >= 0.4:
-        defHit1Reduction = defHit1Reduction - 0.4
 
     def getSpecialHitDamage(effs, initStats, otherStats, defOrRes):
 
@@ -585,6 +582,14 @@ def simulate_combat(attacker, defender, isInSim):
             isConsecutive = True if D_Count >= 2 and startString2[i - 1] == "D" else False
             attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
         i += 1
+
+    # damage reduction per hit
+
+    if "shez!" in atkSkills and attacker.HPcur / atkStats[0] >= 0.4:
+        defHit1Reduction = defHit1Reduction - 0.4
+
+    if "shez!" in defSkills and defender.HPcur / atkStats[0] >= 0.4:
+        atkHit1Reduction = atkHit1Reduction - 0.4
 
     # PERFORM ATTACKS
 
