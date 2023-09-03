@@ -5,7 +5,7 @@
 
 ---------------------------------------- COMBAT ----------------------------------------
 
-1. % Damage Reduction
+1. % Damage Reduction O
 2. True Damage addition/reduction
 3. Special-Enabled True Damage (Atk/Spd Finish)
 4. More complex specials
@@ -15,7 +15,7 @@
 
 0. The Map is a Weighted Graph
 1. Possible Moves
-2. Administer Debuffs
+2. Administer Buffs/Debuffs
 3. Initiate Combat
 4. Assist Skills
 5. Divine Veins
