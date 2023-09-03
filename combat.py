@@ -156,6 +156,10 @@ def simulate_combat(attacker, defender, isInSim):
     atkOtherDmg = 0
     defOtherDmg = 0
 
+    # damage done to self iff self attacks other
+    atkOnlyDmg = 0
+    defOnlyDmg = 0
+
 
 
     # ATTACKER SKILLS -----------------------------------------------------------------------------------------------------------------------
@@ -180,7 +184,7 @@ def simulate_combat(attacker, defender, isInSim):
     if "defBond" in atkSkills and atkAdjacentToAlly: atkStats[3] += atkSkills["defBond"]
     if "resBond" in atkSkills and atkAdjacentToAlly: atkStats[4] += atkSkills["resBond"]
 
-    if "dominance" in atkSkills and Status.Panic not in defender.statusNeg:
+    if "dominance" in atkSkills and (Status.Panic not in attacker.statusNeg or Status.Panic in attacker.statusNeg and Status.NullPanic in attacker.statusPos):
         atkStats[1] += attacker.buff_at
         atkStats[1] += attacker.buff_sp
         atkStats[1] += attacker.buff_df
@@ -195,6 +199,14 @@ def simulate_combat(attacker, defender, isInSim):
     if "doubleLion" in atkSkills and attacker.HPcur == atkStats[0]: #alm
         braveATKR = True
         atkSelfDmg += 5
+
+    if "belovedZofia" in atkSkills and attacker.HPcur == atkStats[0]:
+        atkStats[1] += 4
+        atkStats[2] += 4
+        atkStats[3] += 4
+        atkStats[4] += 4
+        atkSkills.append({"atkOnlySelfDmg": 4})
+
 
     if "berkutBoost" in atkSkills and defender.curHP == defStats[0]:
         atkStats[1] += 5
@@ -275,8 +287,12 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[3] += 5
 
     if "selfDmg" in atkSkills: atkSelfDmg += atkSkills["selfDmg"]  # damage to self after combat always
-    if "atkOnlySelfDmg" in atkSkills: atkDoSelfDmgCheck = True     # damage to attacker after combat iff attacker had attacked
-    if "atkOnlyOtherDmg" in atkSkills: atkDoOtherDmgCheck = True   # damage to other unit after combat if attacker had attacked
+    if "atkOnlySelfDmg" in atkSkills: # damage to attacker after combat iff attacker had attacked
+        atkDoSelfDmgCheck = True
+
+    if "atkOnlyOtherDmg" in atkSkills: # damage to other unit after combat iff attacker had attacked
+        atkDoOtherDmgCheck = True
+
 
     if "triAdeptS" in atkSkills and atkSkills["triAdeptS"] > triAdept: triAdept = atkSkills["triAdeptS"]
     if "triAdeptW" in atkSkills and atkSkills["triAdeptW"] > triAdept: triAdept = atkSkills["triAdeptW"]
@@ -458,9 +474,10 @@ def simulate_combat(attacker, defender, isInSim):
 
     if "BraveDW" in defSkills or "BraveBW" in defSkills: braveDEFR = True
 
+    if "selfDmg" in defSkills: defSelfDmg += defSkills["selfDmg"]
     if "atkOnlySelfDmg" in defSkills: defDoSelfDmgCheck = True
     if "atkOnlyOtherDmg" in defSkills: defDoOtherDmgCheck = True
-    if "selfDmg" in defSkills: defSelfDmg += defSkills["selfDmg"]
+
 
     if "QRW" in defSkills and defender.HPcur / defStats[0] >= 1.0 - (defSkills["QRW"] * 0.1): defSkillFollowUps += 1
     if "QRS" in defSkills and defender.HPcur / defStats[0] >= 1.0 - (defSkills["QRS"] * 0.1): defSkillFollowUps += 1
@@ -907,10 +924,14 @@ def simulate_combat(attacker, defender, isInSim):
     while i < len(attackList) and atkAlive and defAlive:
         curAtk = attackList[i]
 
-        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoSelfDmgCheck == True: atkSelfDmg += atkSkills["atkOnlySelfDmg"]
-        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoOtherDmgCheck == True: atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
-        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoSelfDmgCheck == True: defSelfDmg += defSkills["atkOnlySelfDmg"]
-        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoOtherDmgCheck == True: defOtherDmg += defSkills["atkOnlyOtherDmg"]
+        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoSelfDmgCheck == True:
+            atkSelfDmg += atkSkills["atkOnlySelfDmg"]
+        if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkDoOtherDmgCheck == True:
+            atkOtherDmg += atkSkills["atkOnlyOtherDmg"]
+        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoSelfDmgCheck == True:
+            defSelfDmg += defSkills["atkOnlySelfDmg"]
+        if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defDoOtherDmgCheck == True:
+            defOtherDmg += defSkills["atkOnlyOtherDmg"]
 
         roles = [attacker, defender]
         effects = [atkSpEffects, defSpEffects]
@@ -1837,8 +1858,8 @@ bonusDoubler2 = Skill("Bonus Doubler 2", "Grants bonus to Atk/Spd/Def/Res during
 bonusDoubler3 = Skill("Bonus Doubler 3", "Grants bonus to Atk/Spd/Def/Res during combat = current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler": 3})
 
 sorceryBlade1 = Skill("Sorcery Blade 1", "At start of combat, if unit’s HP = 100% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 1})
-sorceryBlade2 = Skill("Sorcery Blade 2", "At start of combat, if unit’s HP ≥ 50% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 1})
-sorceryBlade3 = Skill("Sorcery Blade 3", "At start of combat, if unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 1})
+sorceryBlade2 = Skill("Sorcery Blade 2", "At start of combat, if unit’s HP ≥ 50% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 2})
+sorceryBlade3 = Skill("Sorcery Blade 3", "At start of combat, if unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 3})
 
 # B SKILLS
 
