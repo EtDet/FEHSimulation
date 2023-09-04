@@ -249,6 +249,11 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[3] += 4
         atkStats[4] += 4
 
+    if "DRINK" in atkSkills and defender.HPcur / defStats[0] >= 0.75:
+        atkStats[1] += 5
+        atkStats[3] += 5
+        atkFixedSpDmgBoost += 7
+
     if "leafSword" in atkSkills and defender.HPcur / defStats[0] == 1:
         atkStats[2] += 4
         atkStats[3] += 4
@@ -267,6 +272,13 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[2] += 3
         atkStats[3] += 3
         atkStats[4] += 3
+
+    if "vassalBlade" in atkSkills:
+        atkStats[2] += 5
+
+    if "Barry B. Benson" in atkSkills and defender.HPcur / defStats[0] >= 0.75:
+        atkStats[1] += 5
+        atkStats[2] += 5
 
     if "bonusInheritor" in atkSkills: #eirika, should be highest bonus for each given stat on allies within 2 spaces
         atkStats[1] += 0
@@ -499,6 +511,11 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[3] += 4
         defStats[4] += 4
 
+    if "DRINK" in defSkills:
+        defStats[1] += 5
+        defStats[3] += 5
+        defFixedSpDmgBoost += 7
+
     if "leafSword" in defSkills and attacker.HPcur / atkStats[0] == 1:
         defStats[2] += 4
         defStats[3] += 4
@@ -516,6 +533,13 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[2] += 3
         defStats[3] += 3
         defStats[4] += 3
+
+    if "vassalBlade" in defSkills and defAllyWithin2Spaces:
+        defStats[2] += 5
+
+    if "Barry B. Benson" in defSkills and attacker.HPcur / atkStats[0] >= 0.75:
+        defStats[1] += 5
+        defStats[2] += 5
 
     if "bonusInheritor" in defSkills: #eirika, should be highest bonus for each given stat on allies within 2 spaces
         defStats[1] += 0
@@ -728,6 +752,14 @@ def simulate_combat(attacker, defender, isInSim):
     if "brashAssault" in atkSkills and (cannotCounter and not(attacker.getRange() == defender.getRange() and ignoreRng)) and attacker.HPcur / atkStats[0] <= 0.1 * atkSkills["brashAssault"] + 0.2:
         atkSkillFollowUps += 1
 
+    if "Barry B. Benson" in atkSkills and defender.HPcur / defStats[0] >= 0.75:
+        atkSkillFollowUpDenials = 0
+        defSkillFollowUps = 0
+
+    if "Barry B. Benson" in defSkills and attacker.HPcur / atkStats[0] >= 0.75:
+        defSkillFollowUpDenials = 0
+        atkSkillFollowUps = 0
+
     if "waitTurns" in atkSkills:
         atkSkillFollowUpDenials = 0
         defSkillFollowUps = 0
@@ -750,6 +782,9 @@ def simulate_combat(attacker, defender, isInSim):
 
     if "thraicaMoment" in atkSkills and defStats[3] >= defStats[4] + 5: atkTrueDamage += 7
     if "thraciaMoment" in defSkills and atkStats[3] >= atkStats[4] + 5: defTrueDamage += 7
+
+    if "vassalBlade" in atkSkills: atkTrueDamage += math.trunc(atkStats[2] * 0.15)
+    if "vassalBlade" in defSkills and defAllyWithin2Spaces: defTrueDamage += math.trunc(defStats[2] * 0.15)
 
     # EFFECTIVENESS CHECK
 
@@ -1003,6 +1038,10 @@ def simulate_combat(attacker, defender, isInSim):
     if "Ayragate" in atkSkills and defender.HPcur / defStats[0] >= 0.75: defHit1Reduction *= 1 - (defDmgReduFector * 0.2)
     if "Ayragate" in defSkills and attacker.HPcur / atkStats[0] >= 0.75: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.2)
 
+
+    atkSpecialTriggered = False
+    defSpecialTriggered = False
+
     # method to attack
 
     def attack(striker, strikee, stkSpEffects, steSpEffects, stkStats, steStats, defOrRes, strSpMod, steSpMod, curReduction, curMiracle, curTrueDmg, curHeal, curDWA):
@@ -1075,7 +1114,7 @@ def simulate_combat(attacker, defender, isInSim):
             if stkSpecialTriggered and "healSelf" in stkSpEffects: print(striker.getName() + " restores " + str(amountHealed) + " HP.")
             if striker.HPcur > stkStats[0]: striker.HPcur = stkStats[0]
 
-        return curMiracle
+        return curMiracle, stkSpecialTriggered, steSpecialTriggered
 
     # PERFORM ATTACKS
 
@@ -1108,9 +1147,14 @@ def simulate_combat(attacker, defender, isInSim):
 
         curRedu = reductions[spongebob][curAtk.attackNumSelf-1]
 
-        miracles[patrick] = attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick],
+        strikeResult = attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick],
                checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], curRedu, miracles[patrick], trueDamages[spongebob], heals[spongebob],
                deepWoundsAllowance[spongebob])
+
+        miracles[patrick] = strikeResult[0]
+
+        atkSpecialTriggered = strikeResult[spongebob + 1]
+        defSpecialTriggered = strikeResult[patrick + 1]
 
         if attacker.HPcur <= 0:
             attacker.HPcur = 0
@@ -1133,6 +1177,12 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[0] -= (defSelfDmg + atkOtherDmg)
         print(defender.getName() + " takes " + str(defSelfDmg + atkOtherDmg) + " damage after combat.")
         if defStats[0] < 1: defStats[0] = 1
+
+    if atkAlive and "specialSpiral" in atkSkills and atkSpecialTriggered:
+        attacker.chargeSpecial(math.ceil(atkSkills["specialSpiral"]/2))
+
+    if defAlive and "specialSpiral" in defSkills and defSkills["specialSpiral"] > 1 and defSpecialTriggered:
+        defender.chargeSpecial(math.ceil(defSkills["specialSpiral"]/2))
 
     return attacker.HPcur, defender.HPcur
 
@@ -2053,6 +2103,8 @@ daggerBreaker2 = Skill("Daggerbreaker 2", "If unit's HP ≥ 70% in combat agains
 daggerBreaker3 = Skill("Daggerbreaker 3", "If unit's HP ≥ 50% in combat against a colorless dagger foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",
                        {"cDaggerBreaker": 3})
 
+specialSpiral3 = Skill ("Special Spiral 3","I dunno", {"specialSpiral":3})
+
 vantage1 = Skill("Vantage 1", "If unit's HP ≤ 25% and foe initiates combat, unit can counterattack before foe's first attack.", {"vantage": 1})
 vantage2 = Skill("Vantage 2", "If unit's HP ≤ 50% and foe initiates combat, unit can counterattack before foe's first attack.", {"vantage": 2})
 vantage3 = Skill("Vantage 3", "If unit's HP ≤ 75% and foe initiates combat, unit can counterattack before foe's first attack.", {"vantage": 3})
@@ -2167,7 +2219,7 @@ clive = Hero("Clive", "Clive", 0, 15, 45, 33, 25, 32, 19, "Lance", 1, lordlyLanc
 
 innes = Hero("Innes", "Innes", 0, 8, 35, 33, 34, 14, 31, "CBow", 0, nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None, None)
 
-mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, miracle, flashingBlade3, vantage3, None, None, None)
+mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, luna, flashingBlade3, specialSpiral3, None, None, None)
 
 shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None, None)
 
@@ -2288,10 +2340,15 @@ shezM.addSpecialLines("\"I'm not gonna die here!\"",
                       "\"You're done!\"",
                       "\"So much for you!\"")
 
+seliph.addSpecialLines("\"With all my strength!\"",
+                       "\"I will never yield!\"",
+                       "\"I will protect everyone!\"",
+                       "\"Until the end!\"")
+
 # playerUnits = [marth, robinM, takumi, ephraim]
 # enemyUnits = [nowi, alm, hector, bartre]
 
-alpha = barst
+alpha = mia
 omega = seliph
 #omega.inflictDamage(0)
 
