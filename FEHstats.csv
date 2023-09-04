@@ -1000,6 +1000,8 @@ C!Taion,Taion,42,42,40,32,27,0,GDagger,99,50%,70%,65%,45%,40%,10
 C!Lanz,Lanz,58,37,15,45,39,3,Sword,99,65%,65%,25%,70%,65%,10
 C!Sena,Sena,43,48,36,35,29,0,Axe,99,50%,80%,55%,55%,45%,10
 C!Juniper,Juniper,38,46,46,23,27,0,RBow,99,45%,75%,75%,40%,40%,10
+C!Matthew,Matthew,41,42,45,33,26,0,Sword,99,50%,,,,,
+C!Na'el,Na'el,41,42,45,26,33,0,BTome,99,50%,,,,,
 ,,,,,,,,,,,,,,,
 C!Joker,Joker,41,43,46,32,25,0,RDagger,99,,,,,,
 C!Mona,Mona,45,34,44,20,39,0,Sword,99,,,,,,
@@ -1014,6 +1016,7 @@ C!Kasumi,Kasumi,43,42,47,28,34,0,CDagger,99,,,,,,
 C!Sophia,Sophia,40,38,39,28,36,0,CTome,99,,,,,,
 C!Zenkichi,Zenkichi,49,43,20,39,35,0,Sword,99,,,,,,
 C!FA!Akechi,Akechi,36,48,47,24,20,0,Sword,99,,,,,,
+,,,,,,,,,,,,,,,
 ,,,,,,,,,,,,,,,
 C!Steve,Steve,49,36,36,36,25,0,Sword,99,,,,,,
 C!Freddy,Freddy,40,45,15,42,39,3,CDagger,99,,,,,,
