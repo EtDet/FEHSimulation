@@ -33,10 +33,22 @@ def simulate_combat(attacker, defender, isInSim):
     atkAdjacentToAlly = False
     atkAllyWithin2Spaces = False
     atkAllyWithin3Spaces = False
+    atkNumAlliesWithin2Spaces = 0
+    atkNumFoesWithin2Spaces = 0
+    atkInfAlliesWithin2Spaces = 0
+    atkCavAlliesWithin2Spaces = 0
+    atkArmAlliesWithin2Spaces = 0
+    atkFlyAlliesWithin2Spaces = 0
 
     defAdjacentToAlly = False
     defAllyWithin2Spaces = False
     defAllyWithin3Spaces = False
+    defNumAlliesWithin2Spaces = 0
+    defNumFoesWithin2Spaces = 0
+    defInfAlliesWithin2Spaces = 0
+    defCavAlliesWithin2Spaces = 0
+    defArmAlliesWithin2Spaces = 0
+    defFlyAlliesWithin2Spaces = 0
 
     atkIsWithinTwoSpacesOfMagicAlly = False
     defIsWithinTwoSpacesOfMagicAlly = False
@@ -65,6 +77,8 @@ def simulate_combat(attacker, defender, isInSim):
 
     atkHasBonus = (attacker.buff_at + attacker.buff_sp + attacker.buff_df + attacker.buff_rs > 0 and Status.NullPanic not in attacker.statusNeg) or len(attacker.statusPos) > 0
     defHasBonus = (defender.buff_at + defender.buff_sp + defender.buff_df + defender.buff_rs > 0 and Status.NullPanic not in defender.statusNeg) or len(defender.statusPos) > 0
+    atkHasPenalty = (attacker.debuff_at + attacker.debuff_sp + attacker.debuff_df + attacker.debuff_rs < 0 or len(attacker.statusNeg) > 0)
+    defHasPenalty = (defender.debuff_at + defender.debuff_sp + defender.debuff_df + defender.debuff_rs < 0 or len(defender.statusNeg) > 0)
 
     # triangle adept, default of -1
     triAdept = -1
@@ -73,10 +87,10 @@ def simulate_combat(attacker, defender, isInSim):
     atkCA = 0
     defCA = 0
 
-    # ignore range
+    # ignore range (distant/close counter)
     ignoreRng = False
 
-    # prevents counterattacks from defender
+    # prevents counterattacks from defender (sweep, flash)
     cannotCounter = False
 
     # enables check for windsweep & watersweep
@@ -129,7 +143,7 @@ def simulate_combat(attacker, defender, isInSim):
 
     # how much damage is reduced by (skills like Phys. Null Follow or Impenetrable Void)
     atkDmgReduFactor = 1 # atk causes def's hits to be reduced
-    defDmgReduFector = 1
+    defDmgReduFactor = 1
 
     # pseudo-Miracle effects
     atkPseudoMiracleEnabled = False
@@ -174,8 +188,10 @@ def simulate_combat(attacker, defender, isInSim):
     atkPostCombatSpCharge = 0
     defPostCombatSpCharge = 0
 
-    atkPenaltiesNeutralized = False
-    defPenaltiesNeutralized = False
+    atkBonusesNeutalized = [False] * 4
+    defBonusesNeutalized = [False] * 4
+    atkPenaltiesNeutralized = [False] * 4
+    defPenaltiesNeutralized = [False] * 4
 
 
 
@@ -231,6 +247,27 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[3] += 4
         atkStats[4] += 4
 
+    if "triangleAtk" in atkSkills and atkFlyAlliesWithin2Spaces >= 2:
+        atkStats[1] += 3
+        atkStats[2] += 3
+        atkStats[3] += 3
+        atkStats[4] += 3
+        braveATKR = True
+
+    if "triangleAtk" in defSkills and defFlyAlliesWithin2Spaces >= 2:
+        atkStats[1] += 3
+        atkStats[2] += 3
+        atkStats[3] += 3
+        atkStats[4] += 3
+
+    if "banana" in atkSkills and (atkInfAlliesWithin2Spaces > 0 or atkFlyAlliesWithin2Spaces > 0):
+        atkStats[1] += 4
+        atkStats[2] += 4
+
+    if "banana" in defSkills and (defInfAlliesWithin2Spaces > 0 or defFlyAlliesWithin2Spaces > 0):
+        defStats[1] += 4
+        defStats[2] += 4
+
     if "spectrumBond" in atkSkills and atkAdjacentToAlly: # awakening falchion
         atkStats[1] += atkSkills["spectrumBond"]
         atkStats[2] += atkSkills["spectrumBond"]
@@ -261,6 +298,19 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[3] += 4
         atkStats[4] += 4
         atkMidCombatHeal += 7
+
+    if "SUPER MARIO!!!" in atkSkills and attacker.specialCount == 0:
+        atkStats[1] += 3
+        atkStats[2] += 3
+        atkStats[3] += 3
+        atkStats[4] += 3
+
+    if "SUPER MARIO!!!" in defSkills and defender.specialCount == 0:
+        defStats[1] += 3
+        defStats[2] += 3
+        defStats[3] += 3
+        defStats[4] += 3
+        ignoreRng = True
 
     if "berkutBoost" in atkSkills and defender.curHP == defStats[0]:
         atkStats[1] += 5
@@ -322,6 +372,39 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[3] += 0
         atkStats[4] += 0
 
+    if "stormSieglinde" in atkSkills and atkNumFoesWithin2Spaces >= atkNumAlliesWithin2Spaces:
+        atkStats[3] += 3
+        atkStats[4] += 3
+        attackerGainWhenAttacking += 1
+
+    if "stormSieglinde2" in atkSkills:
+        atkStats[1] += 4
+        atkStats[2] += 4
+        atkStats[3] += 4
+        atkStats[4] += 4
+        attackerGainWhenAttacking += 1
+        attackerGainWhenAttacked += 1
+
+    if "stormSieglinde2" in defSkills and not defAdjacentToAlly:
+        defStats[1] += 4
+        defStats[2] += 4
+        defStats[3] += 4
+        defStats[4] += 4
+        defenderGainWhenAttacking += 1
+        defenderGainWhenAttacked += 1
+
+    if "Just Lean" in atkSkills and attacker.HPcur/atkStats[0] >= 0.25:
+        atkStats[1] += 4
+        atkStats[2] += 4
+        atkStats[3] += 4
+        atkStats[4] += 4
+
+    if "Just Lean" in defSkills and defender.HPcur/defStats[0] >= 0.25:
+        defStats[1] += 4
+        defStats[2] += 4
+        defStats[3] += 4
+        defStats[4] += 4
+
     if "audBoost" in atkSkills and defender.HPcur == defStats[0]:
         atkStats[1] += 4
         atkStats[2] += 4
@@ -379,7 +462,7 @@ def simulate_combat(attacker, defender, isInSim):
         if defender.buff_sp * DefPanicFactor > 0: defStats[2] -= defender.buff_sp
         if defender.buff_df * DefPanicFactor > 0: defStats[3] -= defender.buff_df
         if defender.buff_rs * DefPanicFactor > 0: defStats[4] -= defender.buff_rs
-        atkPenaltiesNeutralized = True
+        atkPenaltiesNeutralized = [True] * 4
 
     if "laevBoost" in atkSkills and (atkHasBonus or attacker.HPcur / atkStats[0] >= 0.5):
         atkStats[1] += 5
@@ -414,6 +497,32 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[2] += 4
         atkStats[3] += 4
         atkStats[4] += 4
+
+    if "ICE UPON YOU" in atkSkills and defHasPenalty:
+        atkSkillFollowUps += 1
+        defSkillFollowUps -= 1
+
+    if "ICE UPON YOU" in defSkills and atkHasPenalty:
+        defSkillFollowUps += 1
+        atkSkillFollowUps -= 1
+
+    if "FREEZE NOW" in atkSkills and (attacker.HPcur/atkStats[0] >= 0.25 or defHasPenalty):
+        defStats[1] -= 5
+        defStats[3] -= 5
+
+    if "FREEZE NOW" in defSkills and (defender.HPcur/defStats[0] >= 0.25 or atkHasPenalty):
+        atkStats[1] -= 5
+        atkStats[3] -= 5
+
+    if "hikamiThreaten2" in atkSkills and attacker.HPcur/atkStats[0] >= 0.25:
+        defStats[1] -= 4
+        defStats[2] -= 4
+        defStats[3] -= 4
+
+    if "hikamiThreaten2" in defSkills and defender.HPcur/defStats[0] >= 0.25:
+        atkStats[1] -= 4
+        atkStats[2] -= 4
+        atkStats[3] -= 4
 
     if "selfDmg" in atkSkills:  # damage to self after combat always
         atkSelfDmg += atkSkills["selfDmg"]
@@ -627,6 +736,11 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[3] += 0
         defStats[4] += 0
 
+    if "stormSieglinde" and defNumFoesWithin2Spaces >= defNumAlliesWithin2Spaces:
+        defStats[3] += 3
+        defStats[4] += 3
+        defenderGainWhenAttacking += 1
+
     if "audBoost" in defSkills:
         defStats[1] += 4
         defStats[2] += 4
@@ -685,7 +799,7 @@ def simulate_combat(attacker, defender, isInSim):
         if attacker.buff_sp * AtkPanicFactor > 0: atkStats[2] -= attacker.buff_sp
         if attacker.buff_df * AtkPanicFactor > 0: atkStats[3] -= attacker.buff_df
         if attacker.buff_rs * AtkPanicFactor > 0: atkStats[4] -= attacker.buff_rs
-        defPenaltiesNeutralized = True
+        defPenaltiesNeutralized = [True] * 4
 
     if "laevBoost" in defSkills and (defHasBonus or defender.HPcur / defStats[0] >= 0.5):
         defStats[1] += 5
@@ -775,16 +889,28 @@ def simulate_combat(attacker, defender, isInSim):
     # UNITY-TYPE SKILLS
 
     if "spectrumUnityMarth" in atkSkills:
-        atkStats[1] += 4 + ((min(attacker.debuff_at, 0) * -2) + (min(AtkPanicFactor * attacker.buff_at, 0) * -2)) * (not atkPenaltiesNeutralized)
-        atkStats[2] += 4 + ((min(attacker.debuff_sp, 0) * -2) + (min(AtkPanicFactor * attacker.buff_sp, 0) * -2)) * (not atkPenaltiesNeutralized)
-        atkStats[3] += 4 + ((min(attacker.debuff_df, 0) * -2) + (min(AtkPanicFactor * attacker.buff_df, 0) * -2)) * (not atkPenaltiesNeutralized)
-        atkStats[4] += 4 + ((min(attacker.debuff_rs, 0) * -2) + (min(AtkPanicFactor * attacker.buff_rs, 0) * -2)) * (not atkPenaltiesNeutralized)
+        atkStats[1] += 4 + ((min(attacker.debuff_at, 0) * -2) + (min(AtkPanicFactor * attacker.buff_at, 0) * -2)) * (not atkPenaltiesNeutralized[0])
+        atkStats[2] += 4 + ((min(attacker.debuff_sp, 0) * -2) + (min(AtkPanicFactor * attacker.buff_sp, 0) * -2)) * (not atkPenaltiesNeutralized[1])
+        atkStats[3] += 4 + ((min(attacker.debuff_df, 0) * -2) + (min(AtkPanicFactor * attacker.buff_df, 0) * -2)) * (not atkPenaltiesNeutralized[2])
+        atkStats[4] += 4 + ((min(attacker.debuff_rs, 0) * -2) + (min(AtkPanicFactor * attacker.buff_rs, 0) * -2)) * (not atkPenaltiesNeutralized[3])
 
     if "spectrumUnityMarth" in defSkills and defAllyWithin2Spaces:
-        defStats[1] += 4 + ((min(defender.debuff_at, 0) * -2) + (min(DefPanicFactor * defender.buff_at, 0) * -2)) * (not defPenaltiesNeutralized)
-        defStats[2] += 4 + ((min(defender.debuff_sp, 0) * -2) + (min(DefPanicFactor * defender.buff_sp, 0) * -2)) * (not defPenaltiesNeutralized)
-        defStats[3] += 4 + ((min(defender.debuff_df, 0) * -2) + (min(DefPanicFactor * defender.buff_df, 0) * -2)) * (not defPenaltiesNeutralized)
-        defStats[4] += 4 + ((min(defender.debuff_rs, 0) * -2) + (min(DefPanicFactor * defender.buff_rs, 0) * -2)) * (not defPenaltiesNeutralized)
+        defStats[1] += 4 + ((min(defender.debuff_at, 0) * -2) + (min(DefPanicFactor * defender.buff_at, 0) * -2)) * (not defPenaltiesNeutralized[0]) # HOL UP YOU NEED ONE FOR EACH STAT BECAUSE
+        defStats[2] += 4 + ((min(defender.debuff_sp, 0) * -2) + (min(DefPanicFactor * defender.buff_sp, 0) * -2)) * (not defPenaltiesNeutralized[1]) # SOME SKILLS ONLY NULLIFY PENALTIES
+        defStats[3] += 4 + ((min(defender.debuff_df, 0) * -2) + (min(DefPanicFactor * defender.buff_df, 0) * -2)) * (not defPenaltiesNeutralized[2]) # TO ATK AND DEF
+        defStats[4] += 4 + ((min(defender.debuff_rs, 0) * -2) + (min(DefPanicFactor * defender.buff_rs, 0) * -2)) * (not defPenaltiesNeutralized[3]) # I DONT WANNA DEDICATE 16 VARIABLES TO THIS
+
+    if "Minecraft Gaming" in atkSkills:
+        defStats[1] -= 5 + (max(DefPanicFactor * defender.buff_at, 0) * -2) * (not defBonusesNeutalized[0])
+        defStats[2] -= 5 + (max(DefPanicFactor * defender.buff_sp, 0) * -2) * (not defBonusesNeutalized[1])
+        defStats[3] -= 5 + (max(DefPanicFactor * defender.buff_df, 0) * -2) * (not defBonusesNeutalized[2])
+        defStats[4] -= 5 + (max(DefPanicFactor * defender.buff_rs, 0) * -2) * (not defBonusesNeutalized[3])
+
+    if "Minecraft Gaming" in defSkills:
+        atkStats[1] -= 5 + (max(AtkPanicFactor * attacker.buff_at, 0) * -2) * (not atkBonusesNeutalized[0])
+        atkStats[2] -= 5 + (max(AtkPanicFactor * attacker.buff_sp, 0) * -2) * (not atkBonusesNeutalized[1])
+        atkStats[3] -= 5 + (max(AtkPanicFactor * attacker.buff_df, 0) * -2) * (not atkBonusesNeutalized[2])
+        atkStats[4] -= 5 + (max(AtkPanicFactor * attacker.buff_rs, 0) * -2) * (not atkBonusesNeutalized[3])
 
     # SPECIAL CHARGE MODIFICATION
 
@@ -1150,15 +1276,26 @@ def simulate_combat(attacker, defender, isInSim):
 
     # damage reduction per hit
 
-    if "shez!" in atkSkills and attacker.HPcur / atkStats[0] >= 0.4: defHit1Reduction *= 1 - (defDmgReduFector * 0.4)
+    if "shez!" in atkSkills and attacker.HPcur / atkStats[0] >= 0.4: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
     if "shez!" in defSkills and defender.HPcur / atkStats[0] >= 0.4: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
 
-    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:defHit1Reduction *= 1 - (defDmgReduFector * 0.5)
+    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:defHit1Reduction *= 1 - (defDmgReduFactor * 0.5)
     if ("divTyrfing" in defSkills or "refDivTyrfing" in defSkills) and attacker.wpnType in ["RTome", "BTome", "GTome", "CTome"]:atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.5)
 
-    if "Ayragate" in atkSkills and defender.HPcur / defStats[0] >= 0.75: defHit1Reduction *= 1 - (defDmgReduFector * 0.2)
+    if "Ayragate" in atkSkills and defender.HPcur / defStats[0] >= 0.75: defHit1Reduction *= 1 - (defDmgReduFactor * 0.2)
     if "Ayragate" in defSkills and attacker.HPcur / atkStats[0] >= 0.75: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.2)
 
+    if "Just Lean" in atkSkills and attacker.HPCur / atkStats[0] >= 0.25 and atkStats[1] > defStats[1]:
+        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkStats[2] - defStats[2]), 0.4))
+        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkStats[2] - defStats[2]), 0.4))
+        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkStats[2] - defStats[2]), 0.4))
+        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkStats[2] - defStats[2]), 0.4))
+
+    if "Just Lean" in defSkills and defender.HPCur / defStats[0] >= 0.25 and defStats[2] > atkStats[2]:
+        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defStats[2] - atkStats[2]), 0.4))
+        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defStats[2] - atkStats[2]), 0.4))
+        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defStats[2] - atkStats[2]), 0.4))
+        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defStats[2] - atkStats[2]), 0.4))
 
     atkSpecialTriggered = False
     defSpecialTriggered = False
