@@ -32,9 +32,11 @@ def simulate_combat(attacker, defender, isInSim):
     # common position-based conditions
     atkAdjacentToAlly = False
     atkAllyWithin2Spaces = False
+    atkAllyWithin3Spaces = False
 
     defAdjacentToAlly = False
     defAllyWithin2Spaces = False
+    defAllyWithin3Spaces = False
 
     atkIsWithinTwoSpacesOfMagicAlly = False
     defIsWithinTwoSpacesOfMagicAlly = False
@@ -445,6 +447,8 @@ def simulate_combat(attacker, defender, isInSim):
     if "cDaggerBreak" in atkSkills and defender.wpnType == "CDagger" and attacker.HPcur / atkStats[0] > 1.1 - (atkSkills["cDaggerBreak"] * 0.2): atkSkillFollowUps += 1; defSkillFollowUpDenials -= 1
 
     if "spDamageAdd" in atkSkills: atkFixedSpDmgBoost += atkSkills["spDamageAdd"]
+
+
 
 
 
@@ -884,6 +888,15 @@ def simulate_combat(attacker, defender, isInSim):
     if "vassalBlade" in atkSkills: atkTrueDamage += math.trunc(atkStats[2] * 0.15)
     if "vassalBlade" in defSkills and defAllyWithin2Spaces: defTrueDamage += math.trunc(defStats[2] * 0.15)
 
+    atkSpTrueDamageFunc = lambda x: atkFixedSpDmgBoost
+    defSpTrueDamageFunc = lambda x: defFixedSpDmgBoost
+
+    if "Sacred Stones Strike!" in atkSkills and atkAllyWithin3Spaces:
+        atkSpTrueDamageFunc = lambda x: x + atkFixedSpDmgBoost
+
+    if "Sacred Stones Strike!" in defSkills and atkAllyWithin3Spaces:
+        defSpTrueDamageFunc = lambda x: x + defFixedSpDmgBoost
+
     # EFFECTIVENESS CHECK
 
     oneEffAtk = False
@@ -1152,7 +1165,7 @@ def simulate_combat(attacker, defender, isInSim):
 
     # method to attack
 
-    def attack(striker, strikee, stkSpEffects, steSpEffects, stkStats, steStats, defOrRes, strSpMod, steSpMod, curReduction, curMiracle, curTrueDmg, curHeal, curDWA):
+    def attack(striker, strikee, stkSpEffects, steSpEffects, stkStats, steStats, defOrRes, strSpMod, steSpMod, curReduction, curMiracle, curTrueDmg, curSpTrueDmg, curHeal, curDWA):
         stkSpecialTriggered = False
         steSpecialTriggered = False
         dmgBoost = 0
@@ -1160,7 +1173,7 @@ def simulate_combat(attacker, defender, isInSim):
         if striker.specialCount == 0 and striker.getSpecialType() == "Offense":
             print(striker.getName() + " procs " + striker.getSpName() + ".")
             print(striker.getSpecialLine())
-            dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes)
+            dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes) + curSpTrueDmg(min(stkStats[0] - striker.HPcur, 30))
             stkSpecialTriggered = True
 
         attack = stkStats[1] - steStats[3 + defOrRes]
@@ -1247,6 +1260,7 @@ def simulate_combat(attacker, defender, isInSim):
         reductions = [[atkHit1Reduction, atkHit2Reduction, atkHit3Reduction, atkHit4Reduction], [defHit1Reduction, defHit2Reduction, defHit3Reduction, defHit4Reduction]]
         miracles = [atkPseudoMiracleEnabled, defPseudoMiracleEnabled]
         trueDamages = [atkTrueDamage, defTrueDamage]
+        spTrueDamages = [atkSpTrueDamageFunc, defSpTrueDamageFunc]
         heals = [atkMidCombatHeal, defMidCombatHeal]
         deepWoundsAllowance = [atkDeepWoundsHealAllowance, defDeepWoundsHealAllowance]
 
@@ -1256,8 +1270,8 @@ def simulate_combat(attacker, defender, isInSim):
         curRedu = reductions[spongebob][curAtk.attackNumSelf-1]
 
         strikeResult = attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick],
-               checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], curRedu, miracles[patrick], trueDamages[spongebob], heals[spongebob],
-               deepWoundsAllowance[spongebob])
+               checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], curRedu, miracles[patrick], trueDamages[spongebob], spTrueDamages[spongebob],
+               heals[spongebob], deepWoundsAllowance[spongebob])
 
         miracles[patrick] = strikeResult[0]
 
@@ -1293,16 +1307,16 @@ def simulate_combat(attacker, defender, isInSim):
         if defender.HPcur > defStats[0]: defender.HPcur = defStats[0]
 
     if "specialSpiralW" in atkSkills and atkSpecialTriggered:
-        atkPostCombatSpCharge += math.ceil(atkSkills["specialSpiral"]/2)
+        atkPostCombatSpCharge += math.ceil(atkSkills["specialSpiralW"]/2)
 
     if "specialSpiralW" in defSkills and defSkills["specialSpiral"] > 1 and defSpecialTriggered:
-        defPostCombatSpCharge += math.ceil(defSkills["specialSpiral"]/2)
+        defPostCombatSpCharge += math.ceil(defSkills["specialSpiralW"]/2)
 
     if "specialSpiralS" in atkSkills and atkSpecialTriggered:
-        atkPostCombatSpCharge += math.ceil(atkSkills["specialSpiral"]/2)
+        atkPostCombatSpCharge += math.ceil(atkSkills["specialSpiralS"]/2)
 
     if "specialSpiralS" in defSkills and defSkills["specialSpiral"] > 1 and defSpecialTriggered:
-        defPostCombatSpCharge += math.ceil(defSkills["specialSpiral"]/2)
+        defPostCombatSpCharge += math.ceil(defSkills["specialSpiralS"]/2)
 
     if atkAlive and atkPostCombatSpCharge > 0:
         attacker.chargeSpecial(atkPostCombatSpCharge)
@@ -2329,7 +2343,7 @@ clive = Hero("Clive", "Clive", 0, 15, 45, 33, 25, 32, 19, "Lance", 1, lordlyLanc
 
 innes = Hero("Innes", "Innes", 0, 8, 35, 33, 34, 14, 31, "CBow", 0, nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None, None)
 
-mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, luna, flashingBlade3, specialSpiral3, None, None, None)
+mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, sol, flashingBlade3, specialSpiral3, None, None, None)
 
 shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None, None)
 
@@ -2459,13 +2473,13 @@ seliph.addSpecialLines("\"With all my strength!\"",
 # enemyUnits = [nowi, alm, hector, bartre]
 
 alpha = mia
-omega = seliph
+omega = hector
 #omega.inflictDamage(0)
 
 # alpha.inflict(Status.Panic)
 # alpha.inflictStat(1,+7)
 # omega.inflictStat(4,-1)
-omega.chargeSpecial(4)
+omega.chargeSpecial(0)
 
 badaboom = simulate_combat(alpha,omega,False)
 print(badaboom)
