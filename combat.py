@@ -357,6 +357,10 @@ def simulate_combat(attacker, defender, isInSim):
         atkStats[1] += 5
         atkStats[2] += 5
 
+    if "Sacred Stones Strike!" in atkSkills and atkAllyWithin3Spaces:
+        atkStats[1] += 5
+        atkStats[2] += 5
+
     if "waitTurns" in atkSkills: #ryoma
         atkStats[1] += 4
         atkStats[2] += 4
@@ -654,6 +658,13 @@ def simulate_combat(attacker, defender, isInSim):
         defStats[4] += 5
         atkSkillFollowUpDenials -= 1
 
+    if "refineExtra" in defSkills and attacker.HPcur/atkStats[0] >= 0.5:
+        defStats[1] += 5
+        defStats[2] += 5
+
+    if "Sacred Stones Strike!" in defSkills and defAllyWithin3Spaces:
+        defStats[1] += 5
+        defStats[2] += 5
 
 
     if "waitTurns" in defSkills and defAllyWithin2Spaces:
@@ -719,13 +730,11 @@ def simulate_combat(attacker, defender, isInSim):
     if "selfDmg" in defSkills:
         defSelfDmg += defSkills["selfDmg"]
 
-    if "atkOnlySelfDmg" in defSkills:
-        defRecoilDmg += defSkills["atkOnlySelfDmg"]
-        defDoSelfDmgCheck = True
+    if "atkOnlySelfDmg" in defSkills: defRecoilDmg += defSkills["atkOnlySelfDmg"]
 
-    if "atkOnlyOtherDmg" in defSkills:
-        NEWdefOtherDmg += defSkills["atkOnlyOtherDmg"]
-        defDoOtherDmgCheck = True
+
+    if "atkOnlyOtherDmg" in defSkills: NEWdefOtherDmg += defSkills["atkOnlyOtherDmg"]
+
 
 
     if "QRW" in defSkills and defender.HPcur / defStats[0] >= 1.0 - (defSkills["QRW"] * 0.1): defSkillFollowUps += 1
@@ -888,13 +897,14 @@ def simulate_combat(attacker, defender, isInSim):
     if "vassalBlade" in atkSkills: atkTrueDamage += math.trunc(atkStats[2] * 0.15)
     if "vassalBlade" in defSkills and defAllyWithin2Spaces: defTrueDamage += math.trunc(defStats[2] * 0.15)
 
+    # transform into lambda function, all for Owain's refined effect
     atkSpTrueDamageFunc = lambda x: atkFixedSpDmgBoost
     defSpTrueDamageFunc = lambda x: defFixedSpDmgBoost
 
     if "Sacred Stones Strike!" in atkSkills and atkAllyWithin3Spaces:
         atkSpTrueDamageFunc = lambda x: x + atkFixedSpDmgBoost
 
-    if "Sacred Stones Strike!" in defSkills and atkAllyWithin3Spaces:
+    if "Sacred Stones Strike!" in defSkills and defAllyWithin3Spaces:
         defSpTrueDamageFunc = lambda x: x + defFixedSpDmgBoost
 
     # EFFECTIVENESS CHECK
@@ -1173,7 +1183,7 @@ def simulate_combat(attacker, defender, isInSim):
         if striker.specialCount == 0 and striker.getSpecialType() == "Offense":
             print(striker.getName() + " procs " + striker.getSpName() + ".")
             print(striker.getSpecialLine())
-            dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes) + curSpTrueDmg(min(stkStats[0] - striker.HPcur, 30))
+            dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes) + curSpTrueDmg(min(stkStats[0] - striker.HPcur, 30)) # owain :)
             stkSpecialTriggered = True
 
         attack = stkStats[1] - steStats[3 + defOrRes]
@@ -1780,11 +1790,11 @@ class Status(Enum):
     BonusDoubler = 109  # 🔴 Gain atk/spd/def/res boost by current bonus on stat, canceled by Panic
     NullEffDragons = 110  # 🔴 Gain immunity to "eff against dragons"
     NullEffArmors = 111  # 🔴 Gain immunity to "eff against armors"
-    Dominance = 112  # 🔴 Deal true damage = number of stat penalties on foe (including Panic + Bonus)
+    Dominance = 112  # 🔴 Deal true damage = number of stat penalties on foe (including Panic-reversed Bonus)
     ResonanceBlades = 113  # 🔴 Grants Atk/Spd+4 during combat
     Desperation = 114  # 🔴 If unit initiates combat and can make follow-up attack, makes follow-up attack before foe can counter
     ResonanceShields = 115  # 🔴 Grants Def/Res+4 during combat and foe cannot make a follow-up attack in unit's first combat
-    Vantage = 116  # 🔴 Unit counterattacks before foe's first attack
+    Vantage = 116  # 🔴 Unit counterattacks before foe's first attack in enemy phase
     FallenStar = 118  # 🔴 Reduces damage from foe's first attack by 80% in unit's first combat in player phase and first combat in enemy phase
     CancelFollowUp = 119  # 🔴 Foe cannot make a follow-up attack
     NullEffFlyers = 120  # 🔴 Gain immunity to "eff against flyers"
@@ -1797,7 +1807,7 @@ class Status(Enum):
     Pathfinder = 128  # 🔵 Unit's space costs 0 to move to by allies
     NullBonuses = 130  # 🔴 Neutralizes foe's bonuses in combat
     GrandStrategy = 131  # 🔴 If negative penalty is present on foe, grants atk/spd/def/res during combat equal to penalty * 2 for each stat
-    EnGarde = 133  # 🔴 Neutralizes damage outside of combat, except AoE damage
+    EnGarde = 133  # 🔴 Neutralizes damage outside of combat, minus AoE damage
     SpecialCharge = 134  # 🔴 Special charge +1 during combat
     Treachery = 135  # 🔴 Deal true damage = number of stat bonuses on unit (not including Panic + Bonus)
     WarpBubble = 136  # 🔵 Foes cannot warp onto spaces within 4 spaces of unit (does not affect pass skills)
@@ -1811,7 +1821,7 @@ class Status(Enum):
     Hexblade = 147  # 🔴 Damage inflicted using lower of foe's def or res (applies to AoE skills)
     RallySpectrum = 150 # 🔴 Grants atk/spd/def/res +5 and grants -1 cooldown at start of combat to allys with brave or slaying effects, otherwise grants -2 cooldown
     AssignDecoy = 151 # 🔴 Unit is granted savior effect for whatever default range their weapon is, fails if unit currently has savior skill
-
+    DeepStar = 152 # 🔴 In unit's first combat where foe initiates combat, reduces first hit (if Brave eff., first two hits) by 80%
 
 # maps are weighted graphs oh god
 
@@ -1919,6 +1929,8 @@ After an attack, Assist skill, or structure destruction, unit can move spaces = 
 
 (Unit moves according to movement type. Once per turn. Cannot attack or assist. Only highest value applied. Does not stack. After moving, if a skill that grants another action would be triggered (like with Galeforce), Canto will trigger after the granted action. Unit's base movement has no effect on movement granted. Cannot warp (using skills like Wings of Mercy) a distance greater than unit's remaining movement +1.)""",
                       16, 1, {"duoEphRef": 0})
+
+testOwain = Weapon("Test Owain", "TEMP", 16, 1, {"Sacred Stones Strike!": 4})
 
 amatsu = Weapon("Amatsu", "Accelerates Special trigger (cooldown count-1). At start of combat, if unit's HP ≥ 50%, unit can counterattack regardless of foe's range.", 16, 1,
                 {"amatsuDC": 0, "slaying": 1})
@@ -2343,7 +2355,7 @@ clive = Hero("Clive", "Clive", 0, 15, 45, 33, 25, 32, 19, "Lance", 1, lordlyLanc
 
 innes = Hero("Innes", "Innes", 0, 8, 35, 33, 34, 14, 31, "CBow", 0, nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None, None)
 
-mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, resoluteBlade, None, sol, flashingBlade3, specialSpiral3, None, None, None)
+mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, testOwain, None, sol, flashingBlade3, specialSpiral3, None, None, None)
 
 shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None, None)
 
