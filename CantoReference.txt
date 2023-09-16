@@ -14,5 +14,5 @@ For my personal reference when making the weapons spreadsheet.
 32 - Canto Ally 2
 33 - Canto Recall
 
-100 - Canto 2 Turns 1-4 [Niðavellir Sprig, Grim Brokkr, etc.]
-101 - Canto 3 Turns 1-4 [Lyngheiðr, Lofnheiðr, etc.]
+102 - Canto 2 Turns 1-4 [Niðavellir Sprig, Grim Brokkr, etc.]
+103 - Canto 3 Turns 1-4 [Lyngheiðr, Lofnheiðr, etc.]
