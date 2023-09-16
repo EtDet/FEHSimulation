@@ -1,0 +1,16 @@
+1 - Canto 1
+2 - Canto 2
+3 - Canto 3
+
+11 - Canto Rem
+12 - Canto Rem +1
+
+21 - Canto Dist Max 3
+22 - Canto Dist + 1 Max 4
+
+31 - Canto 3x3
+32 - Canto Ally 2
+33 - Canto Recall
+
+100 - Canto 2 Turns 1-4 [Niðavellir Sprig, Grim Brokkr, etc.]
+101 - Canto 3 Turns 1-4 [Lyngheiðr, Lofnheiðr, etc.]
