@@ -24,3 +24,5 @@ All damage reduction goes in damage reduction area, reduFactor needs to be prese
 3. Initiate Combat
 4. Assist Skills
 5. Divine Veins
+
+If a tile has an indestructible structure, it cannot hold a divine vein
