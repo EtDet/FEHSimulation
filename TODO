@@ -10,19 +10,17 @@ Carnage Amastu needs effect tag
 It's "I think that enemy got THE POINT"
 All damage reduction goes in damage reduction area, reduFactor needs to be present!!!!!
 
-1. Neutralize Buffs Don't Stack
-2. True Damage addition/reduction
-3. Special-Enabled True Damage (Atk/Spd Finish)
-4. More complex specials
-5. Data to Skill implementation
+1. True Damage reduction
+2. More complex specials
+3. Data to Skill implementation
 
 ----------------------------------------- FIELD ----------------------------------------
 
-0. The Map is a Weighted Graph
-1. Possible Moves
+0. The Map is a Weighted Graph (done)
+1. Possible Moves (done wait, need attack/assist moves)
 2. Administer Buffs/Debuffs
 3. Initiate Combat
 4. Assist Skills
 5. Divine Veins
 
-If a tile has an indestructible structure, it cannot hold a divine vein
+If a tile has an indestructible structure, it cannot hold a divine vein, treated as impassible terrain
