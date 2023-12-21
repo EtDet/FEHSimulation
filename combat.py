@@ -1,6 +1,7 @@
 import math
 import random
 from enum import Enum
+from hero import *
 
 # CONSTANTS
 HP = 0
@@ -9,17 +10,7 @@ SPD = 2
 DEF = 3
 RES = 4
 
-class Weapon:
-    def __init__(self, name, desc, mt, range, effects):
-        self.name = name
-        self.desc = desc
-        self.mt = mt
-        self.range = range
-        self.effects = effects
 
-    def __str__(self): print(self.name + " \nMt: " + str(self.mt) + " Rng: " + str(self.range) + "\n" + self.desc)
-
-NULL_WEAPON = Weapon("Null", "Null Weapon", 0, 0, {})
 
 def move_letters(s, letter):
     if letter not in ['A', 'D']:
@@ -40,7 +31,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # Invalid Combat if one unit is dead
     # Another case if attacker does not have weapon...?
-    if attacker.HPcur <= 0 or defender.HPcur <= 0 or attacker.getWeapon() == NULL_WEAPON: return (-1,-1)
+    if attacker.HPcur <= 0 or defender.HPcur <= 0 or attacker.getWeapon() == NIL_WEAPON: return (-1,-1)
 
     attacker.unitCombatInitiates += 1
     defender.enemyCombatInitiates += 1
@@ -74,12 +65,22 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         skills[1].update(e.effect for e in combatEffects if e.affectedSide == 1 and e.range(unit[1].tile) and e.condition(unit[1]) and (e.affectSelf or not e.owner == unit[1]))
 
     # common position-based conditions
-    atkAdjacentToAlly = 0
-    atkAllyWithin2Spaces = False
-    atkAllyWithin3Spaces = False
-    atkAllyWithin4Spaces = False
-    atkNumAlliesWithin2Spaces = 0
-    atkNumFoesWithin2Spaces = 0
+    if isInSim:
+        atkAdjacentToAlly = attacker.tile.unitsWithinNSpaces(1, True)
+        atkAllyWithin2Spaces = attacker.tile.unitsWithinNSpaces(2, True)
+        atkAllyWithin3Spaces = attacker.tile.unitsWithinNSpaces(3, True)
+        atkAllyWithin4Spaces = attacker.tile.unitsWithinNSpaces(4, True)
+    else:
+        atkAdjacentToAlly = 0
+        atkAllyWithin2Spaces = 0
+        atkAllyWithin3Spaces = 0
+        atkAllyWithin4Spaces = 0
+
+    if isInSim:
+        atkFoeWithin2Spaces = attacker.tile.unitsWithinNSpaces(1, False)
+    else:
+        atkFoeWithin2Spaces = 0
+
     atkInfAlliesWithin2Spaces = 0
     atkCavAlliesWithin2Spaces = 0
     atkArmAlliesWithin2Spaces = 0
@@ -87,9 +88,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkPhysMeleeCavWithin2Spaces = 0
 
     defAdjacentToAlly = 0
-    defAllyWithin2Spaces = False
-    defAllyWithin3Spaces = False
-    defAllyWithin4Spaces = False
+    defAllyWithin2Spaces = 0
+    defAllyWithin3Spaces = 0
+    defAllyWithin4Spaces = 0
     defNumAlliesWithin2Spaces = 0
     defNumFoesWithin2Spaces = 0
     defInfAlliesWithin2Spaces = 0
@@ -114,7 +115,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     HPEqual100Percent = [0,0]
 
     for i in range(2):
-        print(i)
         HPGreaterEqual25Percent[i] = unit[i].HPcur / stats[i][0] >= 0.25
         HPGreaterEqual50Percent[i] = unit[i].HPcur / stats[i][0] >= 0.50
         HPGreaterEqual50Percent[i] = unit[i].HPcur / stats[i][0] >= 0.75
@@ -132,7 +132,14 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkNumAlliesHPGE90Percent = 0
     defNumAlliesHPGE90Percent = 0
 
-    # is unit affected by panic
+    if isInSim:
+        atkDefensiveTerrain = attacker.tile.is_def_terrain
+        defDefensiveTerrain = defender.tile.is_def_terrain
+    else:
+        atkDefensiveTerrain = False
+        defDefensiveTerrain = False
+
+    #  Panic Status Effect
     AtkPanicFactor = 1
     DefPanicFactor = 1
     panicFactor = [AtkPanicFactor, DefPanicFactor]
@@ -175,10 +182,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # prevent counterattacks from defender (sweep, flash)
     cannotCounter = False
 
-    # enables check for windsweep & watersweep, should delete soon
-    doWindsweepCheck = False
-    doWatersweepCheck = False
-
     # grants brave effect
     braveATKR = False
     braveDEFR = False
@@ -192,7 +195,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # hardy bearing
     hardyBearingAtk = False
-    hardyBearingFoe = False
+    hardyBearingDef = False
 
     # special disabled (special cannot proc)
     atkSpecialDisabled = False
@@ -320,10 +323,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # SOME STATUSES
 
     if Status.Discord in attacker.statusNeg:
-        atkCombatBuffs[1] -= min(2 + atkNumAlliesWithin2Spaces, 5)
-        atkCombatBuffs[2] -= min(2 + atkNumAlliesWithin2Spaces, 5)
-        atkCombatBuffs[3] -= min(2 + atkNumAlliesWithin2Spaces, 5)
-        atkCombatBuffs[4] -= min(2 + atkNumAlliesWithin2Spaces, 5)
+        atkCombatBuffs[1] -= min(2 + atkAllyWithin2Spaces, 5)
+        atkCombatBuffs[2] -= min(2 + atkAllyWithin2Spaces, 5)
+        atkCombatBuffs[3] -= min(2 + atkAllyWithin2Spaces, 5)
+        atkCombatBuffs[4] -= min(2 + atkAllyWithin2Spaces, 5)
 
     if Status.Discord in defender.statusNeg:
         defCombatBuffs[1] -= min(2 + defNumAlliesWithin2Spaces, 5)
@@ -358,20 +361,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "defRein" in atkSkills: defCombatBuffs -= atkSkills["atkRein"]
     if "resRein" in atkSkills: defCombatBuffs -= atkSkills["atkRein"]
 
-    if "dominance" in atkSkills and AtkPanicFactor == 1:
-        atkCombatBuffs[1] += sum(attacker.buffs)
-
-    if "bonusDoublerW" in atkSkills:
-        for i in range(1, 5):
-            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i], 0) * 0.25 * atkSkills["bonusDoublerW"] + 0.25)
-
-    if "bonusDoublerSk" in atkSkills:
-        for i in range(1, 5):
-            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i], 0) * 0.25 * atkSkills["bonusDoublerSk"] + 0.25)
-
-    if "bonusDoublerSe" in atkSkills:
-        for i in range(1, 5):
-            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i], 0) * 0.25 * atkSkills["bonusDoublerSe"] + 0.25)
 
     if "ILOVEBONUSES" in atkSkills and atkHPGreaterEqual50Percent or atkHasBonus:
         map(lambda x: x + 4, atkCombatBuffs)
@@ -429,8 +418,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[2] += 4
 
     if "bibleBros" in atkSkills:
-        atkCombatBuffs[1] += max(atkNumAlliesWithin2Spaces * 2, 6)
-        atkCombatBuffs[3] += max(atkNumAlliesWithin2Spaces * 2, 6)
+        atkCombatBuffs[1] += max(atkAllyWithin2Spaces * 2, 6)
+        atkCombatBuffs[3] += max(atkAllyWithin2Spaces * 2, 6)
 
     if "bibleBrosBrave" in atkSkills and atkPhysMeleeCavWithin2Spaces:
         braveATKR = True
@@ -503,7 +492,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         braveATKR = True
         atkSelfDmg += 5
 
-    if "dracofalchion" in atkSkills and atkNumFoesWithin2Spaces >= atkNumAlliesWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
+    if "dracofalchion" in atkSkills and atkFoeWithin2Spaces >= atkAllyWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
     if "dracofalchion" in defSkills and defNumFoesWithin2Spaces >= defNumAlliesWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
     if "dracofalchionDos" in atkSkills: map(lambda x: x + 5, atkCombatBuffs)
     if "dracofalchionDos" in defSkills and defAllyWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
@@ -512,7 +501,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "grayBoost" in atkSkills and atkHPGreaterEqual50Percent: map(lambda x: x + 3, atkCombatBuffs)
     if "grayBoost" in defSkills and defHPGreaterEqual50Percent: map(lambda x: x + 3, defCombatBuffs)
-    if "challenger" in atkSkills and atkNumAlliesWithin2Spaces <= atkNumFoesWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
+    if "challenger" in atkSkills and atkAllyWithin2Spaces <= atkFoeWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
     if "challenger" in defSkills and defNumAlliesWithin2Spaces <= defNumFoesWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
 
     if "HPWarrior" in atkSkills and atkStats[0] >= defender.curHP + 1: map(lambda x: x + 4, atkCombatBuffs)
@@ -580,6 +569,14 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "NO MORE LOSSES" in defSkills and defAllyWithin3Spaces:
         defCombatBuffs[1] -= 5
         defCombatBuffs[3] -= 5
+
+    if "I HATE FIRE JOKES >:(" in atkSkills and spacesMovedByAtkr:
+        map(lambda x: x + 5, atkCombatBuffs)
+        if atkHPGreaterEqual25Percent: atkPseudoMiracleEnabled
+
+    if "I HATE FIRE JOKES >:(" in defSkills and spacesMovedByAtkr:
+        map(lambda x: x + 5, defCombatBuffs)
+        if defHPGreaterEqual25Percent: defPseudoMiracleEnabled
 
     if "WaitIsHeAGhost" in atkSkills and defHPGreaterEqual75Percent:
         map(lambda x: x + 5, atkCombatBuffs)
@@ -738,6 +735,22 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defenderGainWhenAttacking += 1
         defenderGainWhenAttacked += 1
 
+    if "wanderer" in atkSkills and defHPGreaterEqual75Percent:
+        atkCombatBuffs[ATK] += 5
+        atkCombatBuffs[SPD] += 5
+
+    if "like the university" in atkSkills and atkHPGreaterEqual25Percent:
+        atkCombatBuffs[ATK] += 5
+        atkCombatBuffs[SPD] += 5
+
+    if "wanderer" in defSkills and atkHPGreaterEqual75Percent:
+        atkCombatBuffs[ATK] += 5
+        atkCombatBuffs[SPD] += 5
+
+    if "like the university" in defSkills and defHPGreaterEqual25Percent:
+        defCombatBuffs[ATK] += 5
+        defCombatBuffs[SPD] += 5
+
     if "elistats" in atkSkills and atkHPGreaterEqual25Percent:
         map(lambda x: x + 4, atkCombatBuffs)
 
@@ -796,7 +809,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[3] += 0
         atkCombatBuffs[4] += 0
 
-    if "stormSieglinde" in atkSkills and atkNumFoesWithin2Spaces >= atkNumAlliesWithin2Spaces:
+    if "stormSieglinde" in atkSkills and atkFoeWithin2Spaces >= atkAllyWithin2Spaces:
         atkCombatBuffs[3] += 3
         atkCombatBuffs[4] += 3
         attackerGainWhenAttacking += 1
@@ -823,7 +836,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "renaisTwins" in defSkills and defAllyWithin2Spaces:
         map(lambda x: x + 4, defCombatBuffs)
 
-
     if "audBoost" in atkSkills and defHPEqual100Percent:
         map(lambda x: x + 4, atkCombatBuffs)
 
@@ -843,8 +855,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if attacker.getSpecialType() == "Offense":
             if atkAllyWithin4Spaces >= 1:
                 atkSpChargeBeforeFirstStrike += math.trunc(attacker.getMaxSpecialCooldown()/2)
-            if atkAllyWithin4Spaces >= 2:
-                defHit1Reduction *= (1-(0.1 * attacker.getMaxSpecialCooldown()))
             if atkAllyWithin4Spaces >= 3:
                 atkNullDefFU, atkDoSkillFU = True
 
@@ -853,10 +863,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if defender.getSpecialType() == "Offense":
             if defAllyWithin4Spaces >= 1:
                 defSpChargeBeforeFirstStrike += math.trunc(defender.getMaxSpecialCooldown()/2)
-            if defAllyWithin4Spaces >= 2:
-                atkHit1Reduction *= (1-(0.1 * defender.getMaxSpecialCooldown()))
             if defAllyWithin4Spaces >= 3:
-                defNullDefFU, defDoSkillFU = True
+                defNullAtkFU, defDoSkillFU = True
 
     if "pointySword" in atkSkills: map(lambda x: x + 5, atkCombatBuffs)
     if "pointySword" in defSkills and defAllyWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
@@ -876,6 +884,33 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defenderGainWhenAttacking += 1
         atkBonusesNeutralized[ATK] = True
         atkBonusesNeutralized[DEF] = True
+
+    # yeah we'll be here for a while
+    if "You get NOTHING" in atkSkills:
+        atkDoSkillFU = 0
+        atkNullDefFU = 0
+        defDoSkillFU = 0
+        defNullAtkFU = 0
+        atkSpecialDisabled = True
+        defSpecialDisabled = True
+        atkDefensiveTerrain = False
+        defDefensiveTerrain = False
+        hardyBearingAtk = True
+        hardyBearingDef = True
+        if atkHPGreaterEqual25Percent: map(lambda x: x + 5, atkCombatBuffs)
+
+    if "You get NOTHING" in defSkills:
+        atkDoSkillFU = 0
+        atkNullDefFU = 0
+        defDoSkillFU = 0
+        defNullAtkFU = 0
+        atkSpecialDisabled = True
+        defSpecialDisabled = True
+        atkDefensiveTerrain = False
+        defDefensiveTerrain = False
+        hardyBearingAtk = True
+        hardyBearingDef = True
+        if defHPGreaterEqual25Percent: map(lambda x: x + 5, defCombatBuffs)
 
     if "spectrumBond" in atkSkills and atkAdjacentToAlly: # awakening falchion
         map(lambda x: x + atkSkills["spectrumBond"], atkCombatBuffs)
@@ -974,7 +1009,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         numFoesWithin3Columns3Rows = 0
         atkCombatBuffs[1] += 6
         atkCombatBuffs[3] += 6
-        defHit1Reduction *= 1 - (0.4 * defDmgReduFactor)
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
         if X <= numFoesWithin3Columns3Rows: braveATKR
 
@@ -983,7 +1017,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         numFoesWithin3Columns3Rows = 0
         defCombatBuffs[1] += 6
         defCombatBuffs[3] += 6
-        atkHit1Reduction *= 1 - (0.4 * atkDmgReduFactor)
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
         if X <= numFoesWithin3Columns3Rows: braveDEFR
 
@@ -1032,6 +1065,28 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         map(lambda x:x+4, defCombatBuffs)
         defSkillFollowUps += 1
 
+    if "BONDS OF FIIIIRE, CONNECT US" in atkSkills and atkHPGreaterEqual25Percent:
+        titlesAmongAllies = 0
+        map(lambda x: x + 5, atkCombatBuffs)
+        defCombatBuffs[SPD] -= min(4 + titlesAmongAllies * 2, 12)
+        defCombatBuffs[DEF] -= min(4 + titlesAmongAllies * 2, 12)
+
+    if "BONDS OF FIIIIRE, CONNECT US" in defSkills and defHPGreaterEqual25Percent:
+        titlesAmongAllies = 0
+        map(lambda x: x + 5, defCombatBuffs)
+        atkCombatBuffs[SPD] -= min(4 + titlesAmongAllies * 2, 12)
+        atkCombatBuffs[DEF] -= min(4 + titlesAmongAllies * 2, 12)
+
+    if "LOVE PROVIIIIDES, PROTECTS US" in atkSkills and atkHPGreaterEqual25Percent:
+        map(lambda x: x + 5, atkCombatBuffs)
+        defenderLossWhenAttacking -= 1
+        defenderLossWhenAttacked -= 1
+
+    if "LOVE PROVIIIIDES, PROTECTS US" in defSkills and defHPGreaterEqual25Percent:
+        map(lambda x: x + 5, defCombatBuffs)
+        attackerLossWhenAttacking -= 1
+        attackerLossWhenAttacked -= 1
+
     if "laevBoost" in atkSkills and (atkHasBonus or atkHPGreaterEqual50Percent):
         atkCombatBuffs[1] += 5
         atkCombatBuffs[3] += 5
@@ -1039,20 +1094,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "laevPartner" in atkSkills and defHPGreaterEqual75Percent:
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
-
-    if "GiveMeYourBonuses" in atkSkills and DefPanicFactor == 1:
-        totalBonuses = sum(defender.buffs)
-        map(lambda x: x + math.trunc(totalBonuses/2), atkCombatBuffs)
-
-    if "ILoveBonusesAndWomenAndI'mAllOutOfBonuses" in atkSkills:
-        tempAtkBonuses = 0
-        tempDefBonuses = 0
-        if AtkPanicFactor == 1:
-            tempAtkBonuses = sum(attacker.buffs)
-        if DefPanicFactor == 1:
-            tempDefBonuses = sum(defender.buffs)
-        tempTotalBonuses = min(10, math.trunc((tempAtkBonuses + tempDefBonuses) * 0.4))
-        map(lambda x: x + tempTotalBonuses, atkCombatBuffs)
 
     if "niuBoost" in atkSkills and atkHPGreaterEqual25Percent: map(lambda x: x + 4, atkCombatBuffs)
 
@@ -1081,20 +1122,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[1] -= 4
         atkCombatBuffs[2] -= 4
         atkCombatBuffs[3] -= 4
-
-    if "beeeg debuff" in atkSkills:
-        defCombatBuffs[1] -= 4
-        defCombatBuffs[2] -= 4
-        defCombatBuffs[3] -= 4
-        for i in range(1,5):
-            atkCombatBuffs[ATK] += min(defender.debuffs[i], 0) * -1 + min(defender.buffs[i] * DefPanicFactor, 0) * -1
-
-    if "beeeg debuff" in defSkills and defAllyWithin2Spaces:
-        atkCombatBuffs[1] -= 4
-        atkCombatBuffs[2] -= 4
-        atkCombatBuffs[3] -= 4
-        for i in range(1, 5):
-            defCombatBuffs[ATK] += min(attacker.debuffs[i], 0) * -1 + min(attacker.buffs[i] * AtkPanicFactor, 0) * -1
 
     if "https://youtu.be/eVTXPUF4Oz4?si=RkBGT1Gf1bGBxOPK" in atkSkills and atkAllyWithin3Spaces:
         map(lambda x: x + 4, atkCombatBuffs)
@@ -1173,17 +1200,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "spDamageAdd" in atkSkills: atkFixedSpDmgBoost += atkSkills["spDamageAdd"]
 
-    # GET RID GET RID GET RID
-    if "windsweep" in atkSkills:
-        doWindsweepCheck = True
-        atkSkillFollowUpDenials -= 1
-
     if "firesweep" in atkSkills or "firesweep" in defSkills:
         cannotCounter = True
 
     if "hardyBearing" in atkSkills:
         hardyBearingAtk = True
-        hardyBearingFoe = attacker.HPcur/atkStats[0] >= 1.5 - (atkSkills["hardyBearing"] * .5)
+        hardyBearingDef = attacker.HPcur/atkStats[0] >= 1.5 - (atkSkills["hardyBearing"] * .5)
 
     if "cancelTA" in atkSkills: atkCA = atkSkills["cancelTA"]
 
@@ -1232,30 +1254,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "brazenSpd" in defSkills and defender.HPcur / defStats[HP] <= 0.8: defCombatBuffs[2] += defSkills["brazenSpd"]
     if "brazenDef" in defSkills and defender.HPcur / defStats[HP] <= 0.8: defCombatBuffs[3] += defSkills["brazenDef"]
     if "brazenRes" in defSkills and defender.HPcur / defStats[HP] <= 0.8: defCombatBuffs[4] += defSkills["brazenRes"]
-
-    if "dominance" in defSkills and Status.Panic not in defender.statusNeg:
-        defCombatBuffs[1] += sum(defender.buffs)
-
-    if "bonusDoublerW" in atkSkills:
-        for i in range(1,5):
-            defCombatBuffs[i] += math.trunc(max(DefPanicFactor * defender.buffs[ATK], 0) * 0.25 * defSkills["bonusDoublerW"] + 0.25)
-
-    if "bonusDoublerSk" in atkSkills: #UPDATE WITH DEF SKILLS
-        for i in range(1, 5):
-            defCombatBuffs[i] += math.trunc(
-                max(DefPanicFactor * defender.buffs[ATK], 0) * 0.25 * defSkills["bonusDoublerSk"] + 0.25)
-
-    if "bonusDoublerSe" in atkSkills: #UPDATE WITH DEF SKILLS
-        for i in range(1,5):
-            defCombatBuffs[i] += math.trunc(max(DefPanicFactor * defender.buffs[ATK], 0) * 0.25 * defSkills["bonusDoublerSe"] + 0.25)
-
-    if Status.BonusDoubler in attacker.statusPos:
-        for i in range(1,5):
-            atkCombatBuffs[i] += max(AtkPanicFactor * attacker.buffs[ATK], 0)
-
-    if Status.BonusDoubler in defender.statusPos:
-        for i in range(1, 5):
-            defCombatBuffs[i] += max(DefPanicFactor * defender.buffs[ATK], 0)
 
     if "ILOVEBONUSES" in defSkills and defHPGreaterEqual50Percent or atkHasBonus: #UPDATE WITH DEF SKILLS
         map(lambda x: x + 4, defCombatBuffs)
@@ -1329,7 +1327,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[3] += 0
         defCombatBuffs[4] += 0
 
-    if "stormSieglinde" and defNumFoesWithin2Spaces >= defNumAlliesWithin2Spaces:
+    if "stormSieglinde" in defSkills and defNumFoesWithin2Spaces >= defNumAlliesWithin2Spaces:
         defCombatBuffs[3] += 3
         defCombatBuffs[4] += 3
         defenderGainWhenAttacking += 1
@@ -1382,18 +1380,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
 
-    if "GiveMeYourBonuses" in defSkills and AtkPanicFactor == 1:
-        totalBonuses = sum(attacker.buffs)
-        map(lambda x: x + math.trunc(totalBonuses * 0.5), defCombatBuffs)
-
-    if "ILoveBonusesAndWomenAndI'mAllOutOfBonuses" in defSkills:
-        tempAtkBonuses = 0
-        tempDefBonuses = 0
-        if AtkPanicFactor == 1: tempAtkBonuses = sum(attacker.buffs)
-        if DefPanicFactor == 1: tempDefBonuses = sum(defender.buffs)
-        tempTotalBonuses = min(10, math.trunc((tempAtkBonuses + tempDefBonuses) * 0.4))
-        map(lambda x: x + tempTotalBonuses, defCombatBuffs)
-
     if "niuBoost" in defSkills and defHPGreaterEqual25Percent: map(lambda x: x + 4, defCombatBuffs)
 
     if "triAdeptS" in defSkills and defSkills["triAdeptS"] > triAdept: triAdept = defSkills["triAdeptS"]
@@ -1445,7 +1431,109 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if key == "distantShield": defSpEffects.update({"distantShield": defSkills[key]})
         if key == "miracleSP": defSpEffects.update({"miracleSP": defSkills[key]})
 
-    # UNITY-TYPE SKILLS
+    # LITERALLY EVERYTHING THAT USES EXACT BONUS AND PENALTY VALUES GOES HERE
+
+    if "dominance" in atkSkills and AtkPanicFactor == 1:
+        for i in range(1,5): atkCombatBuffs[1] += attacker.buffs[i] * atkBonusesNeutralized[i]
+
+    if "dominance" in defSkills and DefPanicFactor == 1:
+        for i in range(1,5): defCombatBuffs[1] += defender.buffs[i] * defBonusesNeutralized[i]
+
+    if "bonusDoublerW" in atkSkills:
+        for i in range(1, 5):
+            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i] * atkBonusesNeutralized[i], 0) * 0.25 * atkSkills["bonusDoublerW"] + 0.25)
+
+    if "bonusDoublerSk" in atkSkills:
+        for i in range(1, 5):
+            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i] * atkBonusesNeutralized[i], 0) * 0.25 * atkSkills["bonusDoublerSk"] + 0.25)
+
+    if "bonusDoublerSe" in atkSkills:
+        for i in range(1, 5):
+            atkCombatBuffs[i] += math.trunc(max(AtkPanicFactor * attacker.buffs[i] * atkBonusesNeutralized[i], 0) * 0.25 * atkSkills["bonusDoublerSe"] + 0.25)
+
+    if Status.BonusDoubler in attacker.statusPos:
+        for i in range(1,5):
+            atkCombatBuffs[i] += max(AtkPanicFactor * attacker.buffs[i] * atkBonusesNeutralized[i], 0)
+
+    if "bonusDoublerW" in defSkills:
+        for i in range(1,5):
+            defCombatBuffs[i] += math.trunc(max(DefPanicFactor * defender.buffs[i] * defBonusesNeutralized[i], 0) * 0.25 * defSkills["bonusDoublerW"] + 0.25)
+
+    if "bonusDoublerSk" in atkSkills: #UPDATE WITH DEF SKILLS
+        for i in range(1, 5):
+            defCombatBuffs[i] += math.trunc(max(DefPanicFactor * defender.buffs[i] * defBonusesNeutralized[i], 0) * 0.25 * defSkills["bonusDoublerSk"] + 0.25)
+
+    if "bonusDoublerSe" in atkSkills: #UPDATE WITH DEF SKILLS
+        for i in range(1,5):
+            defCombatBuffs[i] += math.trunc(max(DefPanicFactor * defender.buffs[i] * defBonusesNeutralized[i], 0) * 0.25 * defSkills["bonusDoublerSe"] + 0.25)
+
+    if Status.BonusDoubler in defender.statusPos:
+        for i in range(1, 5):
+            defCombatBuffs[i] += max(DefPanicFactor * defender.buffs[i] * defBonusesNeutralized[i], 0)
+
+    if "I think that enemy got THE POINT" in atkSkills and atkHPGreaterEqual25Percent:
+        map(lambda x: x + 5, atkCombatBuffs)
+        for i in range(1,5): atkCombatBuffs[i] += max(attacker.buffs[i] * AtkPanicFactor * atkBonusesNeutralized[i], 0)
+        defenderLossWhenAttacked -= 1
+        defenderLossWhenAttacking -= 1
+
+    if "I think that enemy got THE POINT" in defSkills and defHPGreaterEqual25Percent:
+        map(lambda x: x + 5, defCombatBuffs)
+        for i in range(1,5): defCombatBuffs[i] += max(defender.buffs[i] * DefPanicFactor * defBonusesNeutralized[i], 0)
+        attackerLossWhenAttacked -= 1
+        attackerLossWhenAttacking -= 1
+
+    if "gregorSword!" in atkSkills:
+        for i in range(1,5):
+            defCombatBuffs -= 5 + max(defender.debuffs[i] * defPenaltiesNeutralized[i] * -1, 0) + max(defender.buffs[i] * DefPanicFactor * defPenaltiesNeutralized[i] * -1, 0)
+
+    if "gregorSword!" in defSkills and defAllyWithin2Spaces:
+        for i in range(1,5):
+            atkCombatBuffs -= 5 + max(attacker.debuffs[i] * atkPenaltiesNeutralized[i] * -1, 0) + max(attacker.buffs[i] * AtkPanicFactor * atkPenaltiesNeutralized[i] * -1, 0)
+
+    if "GiveMeYourBonuses" in atkSkills and DefPanicFactor == 1:
+        totalBonuses = 0
+        for i in range(1,5): totalBonuses += defender.buffs[i] * defBonusesNeutralized[i]
+        map(lambda x: x + math.trunc(totalBonuses/2), atkCombatBuffs)
+
+    if "ILoveBonusesAndWomenAndI'mAllOutOfBonuses" in atkSkills:
+        tempAtkBonuses = 0
+        tempDefBonuses = 0
+        if AtkPanicFactor == 1:
+            for i in range(1,5): tempAtkBonuses += attacker.buffs[i] + atkBonusesNeutralized[i]
+        if DefPanicFactor == 1:
+            for i in range(1,5): tempDefBonuses += defender.buffs[i] + defBonusesNeutralized[i]
+        tempTotalBonuses = min(10, math.trunc((tempAtkBonuses + tempDefBonuses) * 0.4))
+        map(lambda x: x + tempTotalBonuses, atkCombatBuffs)
+
+    if "GiveMeYourBonuses" in defSkills and AtkPanicFactor == 1:
+        totalBonuses = 0
+        for i in range(1,5): totalBonuses += attacker.buffs[i] * atkBonusesNeutralized[i]
+        map(lambda x: x + math.trunc(totalBonuses * 0.5), defCombatBuffs)
+
+    if "ILoveBonusesAndWomenAndI'mAllOutOfBonuses" in defSkills:
+        tempAtkBonuses = 0
+        tempDefBonuses = 0
+        if AtkPanicFactor == 1:
+            for i in range(1,5): tempAtkBonuses += attacker.buffs[i] * atkBonusesNeutralized[i]
+        if DefPanicFactor == 1:
+            for i in range(1,5): tempDefBonuses += defender.buffs[i] * defBonusesNeutralized[i]
+        tempTotalBonuses = min(10, math.trunc((tempAtkBonuses + tempDefBonuses) * 0.4))
+        map(lambda x: x + tempTotalBonuses, defCombatBuffs)
+
+    if "beeeg debuff" in atkSkills:
+        defCombatBuffs[1] -= 4
+        defCombatBuffs[2] -= 4
+        defCombatBuffs[3] -= 4
+        for i in range(1,5):
+            atkCombatBuffs[ATK] += min(defender.debuffs[i] * defPenaltiesNeutralized[i], 0) * -1 + min(defender.buffs[i] * DefPanicFactor * defPenaltiesNeutralized[i], 0) * -1
+
+    if "beeeg debuff" in defSkills and defAllyWithin2Spaces:
+        atkCombatBuffs[1] -= 4
+        atkCombatBuffs[2] -= 4
+        atkCombatBuffs[3] -= 4
+        for i in range(1, 5):
+            defCombatBuffs[ATK] += min(attacker.debuffs[i] * atkPenaltiesNeutralized[i], 0) * -1 + min(attacker.buffs[i] * AtkPanicFactor * atkPenaltiesNeutralized[i], 0) * -1
 
     if "spectrumUnityMarth" in atkSkills:
         for i in range(1, 5):
@@ -1514,6 +1602,14 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defenderLossWhenAttacked -= 1
         defenderLossWhenAttacking -= 1
 
+    if "wanderer" in atkSkills and defHPGreaterEqual75Percent and atkPhantomStats[SPD] > defPhantomStats[SPD]:
+        attackerGainWhenAttacking += 1
+        attackerGainWhenAttacked += 1
+
+    if "wanderer" in defSkills and atkHPGreaterEqual75Percent and defPhantomStats[SPD] > atkPhantomStats[SPD]:
+        defenderGainWhenAttacking += 1
+        defenderGainWhenAttacked += 1
+
     if "audBoost" in atkSkills and defHPEqual100Percent:
         defenderLossWhenAttacked -= 1
         defenderLossWhenAttacking -= 1
@@ -1535,6 +1631,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "BY MISSILETAINN!!!" in defSkills:
         defenderGainWhenAttacked += 1
+
 
     if "flashingBlade" in atkSkills and atkPhantomStats[2] > defPhantomStats[2] + max(-2 * atkSkills["flashingBlade"] + 7, 1):
         attackerGainWhenAttacking += 1
@@ -1635,8 +1732,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # WINDSWEEP PLEASE GET RID OF THAT WINDSWEEP CHECK THING IT SUCKS
 
-    if doWindsweepCheck and atkPhantomStats[2] > defPhantomStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1:
-        cannotCounter = True
+    if "windsweep" in atkSkills:
+        atkSkillFollowUpDenials -= 1
+        if atkPhantomStats[2] > defPhantomStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1:
+            cannotCounter = True
 
     # I hate this skill up until level 4 why does it have all those conditions
     if "brashAssault" in atkSkills and (cannotCounter or not(attacker.getRange() == defender.getRange() or ignoreRng)) and attacker.HPcur / atkStats[0] <= 0.1 * atkSkills["brashAssault"] + 0.2:
@@ -1758,6 +1857,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "thraicaMoment" in atkSkills and defStats[3] >= defStats[4] + 5: atkTrueDamage += 7
     if "thraciaMoment" in defSkills and atkStats[3] >= atkStats[4] + 5: defTrueDamage += 7
 
+    if "LOVE PROVIIIIDES, PROTECTS US" in atkSkills and atkHPGreaterEqual25Percent: atkTrueDamage += math.trunc(atkStats[2] * 0.15)
+    if "LOVE PROVIIIIDES, PROTECTS US" in defSkills and defHPGreaterEqual25Percent: defTrueDamage += math.trunc(defStats[2] * 0.15)
+
     if "vassalBlade" in atkSkills: atkTrueDamage += math.trunc(atkStats[2] * 0.15)
     if "vassalBlade" in defSkills and defAllyWithin2Spaces: defTrueDamage += math.trunc(defStats[2] * 0.15)
 
@@ -1769,6 +1871,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "hamburger" in atkSkills: atkTrueDamage += math.trunc(atkStats[3] * 0.15)
     if "hamburger" in atkSkills and defAllyWithin2Spaces: defTrueDamage += math.trunc(defStats[3] * 0.15)
+
+    if "I HATE FIRE JOKES >:(" in atkSkills and spacesMovedByAtkr: atkTrueDamage += math.trunc(defStats[DEF] * 0.10 * min(spacesMovedByAtkr, 4))
+    if "I HATE FIRE JOKES >:(" in defSkills and spacesMovedByAtkr: defTrueDamage += math.trunc(atkStats[DEF] * 0.10 * min(spacesMovedByAtkr, 4))
 
     if "renaisTwins" in atkSkills and (atkHasBonus or atkHasPenalty):
         atkTrueDamage += math.trunc(defStats[3] * 0.20)
@@ -1793,6 +1898,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "Sacred Stones Strike!" in defSkills and defAllyWithin3Spaces:
         defSpTrueDamageFunc = lambda x: x + defFixedSpDmgBoost
+
+    # TRUE DAMAGE SUBTRACTION
+
+
 
     # EFFECTIVENESS CHECK
 
@@ -1956,7 +2065,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # COMPUTE TURN ORDER
     cannotCounterFinal = cannotCounter or not(attacker.getRange() == defender.getRange() or ignoreRng)
     # Will never counter if defender has no weapon
-    if defender.getWeapon() == NULL_WEAPON: cannotCounterFinal == True
+    if defender.getWeapon() == NIL_WEAPON: cannotCounterFinal == True
 
     # Follow-Up Granted if sum of allowed - denied follow-ups is > 0
     followupA = atkSpdFollowUps + atkSkillFollowUps + atkSkillFollowUpDenials > 0
@@ -2038,6 +2147,16 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills and atkHPGreaterEqual25Percent: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
     if "HERE'S SOMETHING TO BELIEVE IN" in defSkills and defHPGreaterEqual25Percent: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
 
+    # SU!Edelgard - Regal Sunshade - Base
+    if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent: defHit1Reduction *= 1 - (0.4 * defDmgReduFactor)
+    if "regalSunshade" in defSkills and defHPGreaterEqual25Percent: atkHit1Reduction *= 1 - (0.4 * atkDmgReduFactor)
+
+    # CH!Ike - Sturdy War Sword - Base
+    if "sturdyWarrr" in atkSkills and atkHPGreaterEqual25Percent and attacker.getSpecialType() == "Offense" and atkAllyWithin4Spaces >= 2:
+        defHit1Reduction *= 1 - (0.1 * attacker.getMaxSpecialCooldown() * defDmgReduFactor)
+    if "sturdyWarrr" in defSkills and defHPGreaterEqual25Percent and defender.getSpecialType() == "Offense" and defAllyWithin4Spaces >= 2:
+        atkHit1Reduction *= 1 - (0.1 * defender.getMaxSpecialCooldown() * atkDmgReduFactor)
+
     # Reginn - Lyngheiðr - Base
     if "reginn :)" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
 
@@ -2070,6 +2189,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             atkHit3Reduction *= 1 - (atkDmgReduFactor * 0.4)
             atkHit4Reduction *= 1 - (atkDmgReduFactor * 0.4)
 
+    if "gregorSword!" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
+    if "gregorSword!" in defSkills and defAllyWithin2Spaces: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
+
     # L!Sigurd - Hallowed Tyrfing - Base
     if "WaitIsHeAGhost" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
     if "WaitIsHeAGhost" in defSkills and defender.getRange() == 2: atkHit4Reduction *= 1 - (atkDmgReduFactor * 0.4)
@@ -2093,7 +2215,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "MY TRAP! 🇺🇸" in atkSkills and atkAdjacentToAlly <= 1: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
     if "MY TRAP! 🇺🇸" in defSkills and defAdjacentToAlly <= 1: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
 
-    #
+    # uhhhhhhh
     if "Just Lean" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
         defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
         defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
@@ -2106,8 +2228,44 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
         atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
 
-    # Dodge Status
+    # Rutger - Wanderer Blade - Refined Eff
+    if "like the university" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
+        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
 
+    if "like the university" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
+        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+
+    if "BONDS OF FIIIIRE, CONNECT US" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
+        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+
+    if "BONDS OF FIIIIRE, CONNECT US" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
+        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+
+    if "LOVE PROVIIIIDES, PROTECTS US" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
+        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+
+    if "LOVE PROVIIIIDES, PROTECTS US" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
+        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+
+    # Dodge Status
     if Status.Dodge in atkSkills and atkPhantomStats[2] > defPhantomStats[2]:
         defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
         defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
@@ -2119,7 +2277,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
         atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
         atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-
 
     if "reduFU" in atkSkills and turn % 2 == 1 or not defHPEqual100Percent:
         defHit1Reduction *= 1 - (defDmgReduFactor * 0.3 * (1 + int(followupD)))
@@ -2149,6 +2306,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     def attack(striker, strikee, stkSpEffects, steSpEffects, stkStats, steStats, defOrRes, strSpMod, steSpMod,
                curReduction, curMiracle, curTrueDmg, curSpTrueDmg, curHeal, curDWA, spPierce, alwPierce, curTriggered,
                stkDisabledSpecial, steDisabledSpecial):
+
         stkSpecialTriggered = False
         steSpecialTriggered = False
         dmgBoost = 0
@@ -2353,454 +2511,6 @@ class Attack():
         self.attackNumAll = attackNumAll
         self.prevAttack = prevAttack
 
-
-class Hero:
-    def __init__(self, name, intName, side, game, hp, at, sp, df, rs, wpnType, movement, weapon, assist, special, askill, bskill, cskill, sSeal, blessing):
-        self.name = name  # Unit's name (Julia, Arthur, etc.)
-        self.intName = intName  # Unit's specific name (M!Shez, HA!F!Grima, etc.)
-        self.side = side  # 0 - player, 1 - enemy
-
-        # FE Game of Origin - used by harmonic skills, Askr's Opened Domain, and Alear's Libération/Dragon's Fist
-        # 0 - Heroes
-        # 1/3/11/12 - Shadow Dragon/(New) Mystery
-        # 2/15 - Gaiden/Echoes
-        # 4 - Genealogy of the Holy War
-        # 5 - Thracia 776
-        # 6 - Binding Blade
-        # 7 - Blazing Blade
-        # 8 - Sacred Stones
-        # 9 - Path of Radiance
-        # 10 - Radiant Dawn
-        # 13 - Awakening
-        # 14 - Fates
-        # 16 - Three Houses/Three Hopes
-        # 17 - Engage
-        # 69 - Tokyo Mirage Sessions ♯FE
-        # 99 - Other
-        # 313 - Naga & H!Naga (Listed to have FE3 & FE13 as games of origin)
-        # 776 - A!Ced & L!Lief (same as Naga w/ FE4 & FE5)
-        self.game = game
-
-        # base stats, these should NOT be changed
-        self.stats = [hp, at, sp, df, rs]
-
-        # visible stats stats after added weapon mt,
-        # skills like Fury or Life and Death, or stat assets/flaws and dragonflowers
-        self.visible_stats = [hp, at, sp, df, rs]
-
-        # current HP
-        self.HPcur = self.visible_stats[HP]
-
-        # put into array
-        self.buffs = [0, 0, 0, 0, 0]
-
-        # field buffs for different stats, will not change if
-        #hero has Panic effect
-
-        self.debuffs = [0, 0, 0, 0, 0]
-
-        # field debuffs for different stats, can only be negative
-        # HC converts into buff, removes debuff values from units
-
-        self.statusPos = []  # array of positive status effects currently held, cleared upon start of unit's turn
-        self.statusNeg = []  # array of positive status effects currently held, cleared upon end of unit's action
-
-        # array
-        self.growth_hp = 0  # growth rates for given unit
-        self.growth_at = 0  # mainly used to determine
-        self.growth_sp = 0  # assets & flaws, as well as
-        self.growth_df = 0  # superassets and superflaws
-        self.growth_rs = 0  # asc assets too they're neat
-
-        # specific unit skills
-        self.weapon = weapon
-        self.assist = assist
-        self.special = special
-        self.askill = askill
-        self.bskill = bskill
-        self.cskill = cskill
-        self.sSeal = sSeal
-        self.xskill = None # feh this is just more work for me
-
-        tempSkills = self.getSkills()
-
-        if "HPBoost" in tempSkills:  self.visible_stats[HP] += tempSkills["HPBoost"]; self.HPcur += tempSkills["HPBoost"]
-        if "atkBoost" in tempSkills: self.visible_stats[ATK] += tempSkills["atkBoost"]
-        if "spdBoost" in tempSkills: self.visible_stats[SPD] += tempSkills["spdBoost"]
-        if "defBoost" in tempSkills: self.visible_stats[DEF] += tempSkills["defBoost"]
-        if "resBoost" in tempSkills: self.visible_stats[RES] += tempSkills["resBoost"]
-        if "atkspdBoost" in tempSkills:
-            self.visible_stats[ATK] += tempSkills["atkspdBoost"]
-            self.visible_stats[SPD] += tempSkills["atkspdBoost"]
-        if "spectrumBoost" in tempSkills:
-            for i in range(1,5):
-                self.stats[i] += tempSkills["spectrumBoost"]
-
-        if self.weapon is not None: self.visible_stats[ATK] += self.weapon.mt
-
-        self.wpnType = wpnType
-        self.color = self.getColor()
-
-        self.move = movement  # 0 - inf, 1 - cav, 2 - fly, 3 - arm
-        self.moveTiles = -(abs(self.move - 1)) + 3  # num of tiles unit can move
-
-        self.specialCount = -1
-        self.specialMax = -1
-        if self.special is not None:
-            if "slaying" in weapon.effects:
-                self.specialCount = self.special.cooldown - weapon.effects["slaying"]
-                self.specialMax = self.special.cooldown - weapon.effects["slaying"]
-                if self.specialCount < 1: self.specialCount = 1
-                if self.specialMax < 1: self.specialMax = 1
-
-            else:
-                self.specialCount = self.special.cooldown
-                self.specialMax = self.special.cooldown
-
-        self.merges = 0
-        self.dragonflowers = 0
-        self.dragonflower_limit = 0
-
-        self.allySupport = None
-        self.summonerSupport = None
-
-        self.blessing = blessing
-
-        self.duoSkill = None
-        self.harmonizedSkill = None
-
-        self.combatsThisTurnUnit = 0
-        self.combatsThisTurnEnemy = 0
-
-        self.unitCombatInitiates = 0
-        self.enemyCombatInitiates = 0
-
-        self.beastTransformCondition = False
-
-        self.tile = None
-        self.passStatus = False
-
-        self.spLines = [""] * 4
-
-    def getColor(self):
-        if self.wpnType == "Sword" or self.wpnType == "RBow" or self.wpnType == "RDagger" or self.wpnType == "RTome" or self.wpnType == "RDragon" or self.wpnType == "RBeast":
-            return "Red"
-        if self.wpnType == "Axe" or self.wpnType == "GBow" or self.wpnType == "GDagger" or self.wpnType == "GTome" or self.wpnType == "GDragon" or self.wpnType == "GBeast":
-            return "Green"
-        if self.wpnType == "Lance" or self.wpnType == "BBow" or self.wpnType == "BDagger" or self.wpnType == "BTome" or self.wpnType == "BDragon" or self.wpnType == "BBeast":
-            return "Blue"
-        else:
-            return "Colorless"
-
-    # class Color(Enum):
-    #    Sword,RBow,RDagger,RTome,RDragon,RBeast = 0
-    #    Lance,BBow,BDagger,BTome,BDragon,BBeast = 1
-    #    Axe,GBow,GDagger,GTome,GDragon,GBeast = 2
-    #    Staff,CBow,CDagger,CTome,CDragon,CBeast = 3
-
-    def inflict(self, status):
-        if status.value > 100 and status not in self.statusPos:
-            self.statusPos.append(status)
-            print(self.name + " receives " + status.name + " (+).")
-        elif status.value < 100 and status not in self.statusNeg:
-            self.statusNeg.append(status)
-            print(self.name + " receives " + status.name + " (-).")
-
-    def clearPosStatus(self):  # called once enemy turn ends
-        self.posStatus.clear()
-
-    def clearNegStatus(self):  # called once unit acts
-        self.negStatus.clear()
-
-    def inflictStat(self, stat, num):
-        statStr = ""
-        if stat == ATK: statStr = "Atk"
-        elif stat == SPD: statStr = "Spd"
-        elif stat == DEF: statStr = "Def"
-        elif stat == RES: statStr = "Res"
-        else: print("Invalid stat change! No changes made."); return
-
-        if num > 0: self.buffs[stat] = max(self.buffs[stat], num)
-        if num < 0: self.debuffs[stat] = min(self.debuffs[stat], num)
-
-        print(self.name + "'s " + statStr + " was modified by " + str(num) + ".")
-
-    def chargeSpecial(self, charge):
-        if charge > 1:
-            # will decrease special count by charge
-            self.specialCount = max(0, self.specialCount - charge)
-            self.specialCount = min(self.specialCount, self.specialMax)
-
-            print(self.name + "'s special was charged by " + str(charge) + ". Currently is: " + str(self.specialCount))
-
-    def inflictDamage(self, damage):
-        self.HPcur -= damage
-        if self.HPcur < 1: self.HPcur = 1
-        print(self.name + " takes " + str(damage) + " damage out of combat.")
-
-    def hasBonus(self):
-        return (sum(self.buffs) < 0 and Status.Panic not in self.statusNeg) or len(self.statusPos) > 0
-
-    def hasPenalty(self):
-        return sum(self.debuffs) < 0 or len(self.statusNeg) > 0
-
-    # current tile, Tile object if on map, Null Pointer otherwise
-    def setTile(self, tile):
-        self.tile = tile
-
-    def getPass(self):
-        return self.passStatus
-
-    def setPass(self, bool):
-        self.passStatus = bool
-
-    def getTargetedDef(self):
-        isTome = self.wpnType == "RTome" or self.wpnType == "BTome" or self.wpnType == "GTome" or self.wpnType == "CTome" or self.wpnType == "Staff"
-        isDragon = self.wpnType == "RDragon" or self.wpnType == "BDragon" or self.wpnType == "GDragon" or self.wpnType == "CDragon"
-
-        if isTome:
-            return 1
-        elif isDragon:
-            return 0
-        else:
-            return -1
-
-    def getRange(self):
-        if self.weapon is not None:
-            return self.weapon.range
-        return -1
-
-    def getWeaponType(self):
-        return self.wpnType
-
-    def getWeapon(self):
-        if self.weapon is None: return NULL_WEAPON
-        return self.weapon
-
-    def getAssist(self):
-        return self.assist
-
-    def getSkills(self):
-        heroSkills = {}
-        if self.weapon != None: heroSkills.update(self.weapon.effects)
-        if self.special != None: heroSkills.update(self.special.effects)
-        if self.askill != None: heroSkills.update(self.askill.effects)
-        if self.bskill != None: heroSkills.update(self.bskill.effects)
-        if self.cskill != None: heroSkills.update(self.cskill.effects)
-        if self.sSeal != None: heroSkills.update(self.sSeal.effects)
-
-        return heroSkills
-
-    def getCooldown(self):
-        if self.special != None:
-            return self.special.getCooldown()
-        else:
-            return -1
-
-    def getStats(self):
-        return [self.visible_stats[HP], self.visible_stats[ATK], self.visible_stats[SPD],
-                self.visible_stats[DEF], self.visible_stats[RES]]
-
-    #def setStats(self, stats):
-    #    self.stats[HP] = stats[HP]
-    #    self.stats[ATK] = stats[ATK]
-    #    self.stats[SPD] = stats[SPD]
-    #    self.stats[DEF] = stats[DEF]
-    #    self.stats[RES] = stats[RES]
-
-    def getName(self): return self.name
-    def getSpName(self): return self.special.getName()
-
-    def getSpecialType(self):
-        if self.special is not None: return self.special.type.name
-        else: return ""
-
-    def getMaxSpecialCooldown(self):
-        if self.special is not None: return self.special.cooldown
-        else: return 0
-
-    def addSpecialLines(self, line0, line1, line2, line3):
-        self.spLines[0] = line0
-        self.spLines[1] = line1
-        self.spLines[2] = line2
-        self.spLines[3] = line3
-
-    def getSpecialLine(self):
-        x = random.randint(0, 3)
-        return self.spLines[x]
-
-    def haveAssist(self): return not self.assist is None
-
-    def attackType(self):
-        if self.weapon is None:
-            return 0
-        else:
-            if self.weapon.getRange() == 1:
-                return 2
-            else:
-                return 1
-
-    def getSortKey(self):
-        return (
-
-        )
-
-
-
-
-
-class Skill:
-    def __init__(self, name, desc, effects):
-        self.name = name
-        self.desc = desc
-        self.effects = effects
-        self.level = 0
-
-    def __str__(self): print(self.name + "\n" + self.desc)
-
-
-class SpecialType(Enum):
-    Offense = 0
-    Defense = 1
-    AreaOfEffect = 2
-    Galeforce = 3
-
-
-class Special(Skill):
-    def __init__(self, name, desc, effects, cooldown, type):
-        self.name = name
-        self.desc = desc
-        self.effects = effects
-        self.cooldown = cooldown
-        self.type = type
-
-    def getCooldown(self): return self.cooldown
-    def getName(self): return self.name
-
-
-class Blessing():
-    def __init__(self, element, boostType, stat):
-        # 9 - none
-        # 0 - fire, 1 - water, 2 - wind, 3 - earth
-        # 4 - light, 5 - dark, 6 - astra, 7 - anima
-        self.element = element
-
-        # 9 - none
-        # 0 - blessing, for non-legendary/mythic unit
-        # 1 - legendary effect 1 - stat boost
-        #     OR mythic effect 1 - AR boost + stat boost
-        # 2 - legendary effect 2 - pair up
-        # 3 - legendary effect 3 - stat boost + pair up
-        self.boostType = boostType
-
-        # 9 - none
-        # 1 - atk, 2 - spd, 3 - def, 4 - res
-        self.stat = stat
-
-
-null_blessing = Blessing(9, 9, 9)
-fire_blessing = Blessing(0, 0, 9)
-astra_blessing = Blessing(6, 0, 9)
-L_lucina = Blessing(2, 1, 2)
-earth_pair = Blessing(3, 2, 9)
-L_myrrh = Blessing(2, 3, 3)
-M_seiðr = Blessing(6, 1, 1)
-
-
-
-
-
-class DuoSkill:
-    def __init__(self, effect):
-        # 0 - 20 non-special AOE damage to enemies within 3 columns
-        # 1 - Inf & Arm allies within 2 spaces and self gain MobilityUp
-        # 2 - Grants Atk/Spd/Def/Res+3 and BonusDoubler to Arm and Fly allies within 3 rows
-        # 3 - Special cooldown -2 to self and Inf allies within 3 rows and columns
-        # 4 - Neutralizes stat penalties and negative penalties, restores 30HP, and grants to Atk/Spd+6 on self and allies within 5 rows and columns
-        # 5 - Grants Def/Res+6 and grants NullEffDragons and NullEffArmors to self and allies within 5 rows and columns
-        # 6 - Grants MobilityUp to self and adjacent Fly allies
-        # 7 - Grants Dominance to self and allies within 3 columns and inflicts Def/Res-7 on foes within 3 columns
-        # 8 - Grants Desperation to self and allies within 2 spaces (WAIT NO THERE'S MORE THAN ONE TYPE OF REUSABLE DUO SKILL COME BACK TO THIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIIISSSS)
-        # 9 - Moves adjacent allies to other side of unit, if space is available for targeted unit
-
-        effect = effect
-        oncePerMap = False if effect in [8, 9] else True
-
-
-class HarmonicSkill(DuoSkill):
-    def __init__(self, hEffect, secondGame):
-        hEffect = hEffect
-        secondGame = secondGame
-
-
-# positive status effects are removed upon the start of the next controllable phase
-# negative status effects are removed upon the unit finishing that turn's action
-
-# 🔴 - combat
-# 🔵 - movement
-# 🟢 - other
-
-class Status(Enum):
-    # negative
-
-    Gravity = 0  # 🔵 Movement reduced to 1
-    Panic = 1  # 🔴 Buffs are negated & treated as penalties
-    Flash = 2  # 🔴 Unable to counterattack
-    TriAdept = 4  # 🔴 Triangle Adept 3, weapon tri adv/disadv affected by 20%
-    Guard = 5  # 🔴 Special charge -1
-    Isolation = 8  # 🟢 Cannot use or receive assist skills
-    DeepWounds = 17  # 🟢 Cannot recover HP
-    Stall = 26  # 🔵 Converts MobilityUp to Gravity
-    FalseStart = 29  # 🟢 Disables "at start of turn" skills, does not neutralize beast transformations or reusable duo/harmonized skills, cancelled by Odd/Even Recovery Skills
-    CantoControl = 32  # 🔵 If range = 1 Canto skill becomes Canto 1, if range = 2, turn ends when canto triggers
-    Exposure = 38  # 🔴 Foe's attacks deal +10 true damage
-    Undefended = 41  # 🔴 Cannot be protected by savior
-    Feud = 42  # 🔴 Disables all allies' skills (excluding self) in combat, does not include savior, but you get undefended if you get this because Embla
-    Sabotage = 48  # 🔴 Reduces atk/spd/def/res by lowest debuff among unit & allies within 2 spaces during combat
-    Discord = 49  # 🔴 Reduces atk/spd/def/res by 2 + number of allies within 2 spaces of unit, max 3 during combat
-    Ploy = 53 # 🔴 Nullifies Bonus Doubler, Treachery, and Grand Strategy on unit
-
-    # positive
-
-    MobilityUp = 103  # 🔵 Movement increased by 1, cancelled by Gravity
-    AirOrders = 106  # 🔵 Unit can move to space adjacent to ally within 2 spaces
-    EffDragons = 107  # 🔴 Gain effectiveness against dragons
-    BonusDoubler = 109  # 🔴 Gain atk/spd/def/res boost by current bonus on stat, canceled by Panic
-    NullEffDragons = 110  # 🔴 Gain immunity to "eff against dragons"
-    NullEffArmors = 111  # 🔴 Gain immunity to "eff against armors"
-    Dominance = 112  # 🔴 Deal true damage = number of stat penalties on foe (including Panic-reversed Bonus)
-    ResonanceBlades = 113  # 🔴 Grants Atk/Spd+4 during combat
-    Desperation = 114  # 🔴 If unit initiates combat and can make follow-up attack, makes follow-up attack before foe can counter
-    ResonanceShields = 115  # 🔴 Grants Def/Res+4 during combat and foe cannot make a follow-up attack in unit's first combat
-    Vantage = 116  # 🔴 Unit counterattacks before foe's first attack in enemy phase
-    FallenStar = 118  # 🔴 Reduces damage from foe's first attack by 80% in unit's first combat in player phase and first combat in enemy phase
-    CancelFollowUp = 119  # 🔴 Foe cannot make a follow-up attack
-    NullEffFlyers = 120  # 🔴 Gain immunity to "eff against flyers"
-    Dodge = 121  # 🔴 If unit's spd > foe's spd, reduces combat & non-Røkkr AoE damage by X%, X = (unit's spd - foe's spd) * 4, max of 40%
-    MakeFollowUp = 122  # 🔴 Unit makes follow-up attack when initiating combat
-    TriAttack = 123  # 🔴 If within 2 spaces of 2 allies with TriAttack and initiating combat, unit attacks twice
-    NullPanic = 124  # 🔴 Nullifies Panic
-    CancelAffinity = 125  # 🔴 Cancel Affinity 3, reverses weapon triangle to neutral if Triangle Adept-having unit/foe has advantage
-    NullFollowUp = 127  # 🔴 Disables skills that guarantee foe's follow-ups or prevent unit's follow-ups
-    Pathfinder = 128  # 🔵 Unit's space costs 0 to move to by allies
-    NullBonuses = 130  # 🔴 Neutralizes foe's bonuses in combat
-    GrandStrategy = 131  # 🔴 If negative penalty is present on self, grants atk/spd/def/res during combat equal to penalty * 2 for each stat
-    EnGarde = 133  # 🔴 Neutralizes damage outside of combat, minus AoE damage
-    SpecialCharge = 134  # 🔴 Special charge +1 during combat
-    Treachery = 135  # 🔴 Deal true damage = number of stat bonuses on unit (not including Panic + Bonus)
-    WarpBubble = 136  # 🔵 Foes cannot warp onto spaces within 4 spaces of unit (does not affect pass skills)
-    Charge = 137  # 🔵 Unit can move to any space up to 3 spaces away in cardinal direction, terrain/skills that halt (not slow) movement still apply, treated as warp movement
-    Canto1 = 139  # 🔵 Can move 1 space after combat (not writing all the canto jargon here)
-    FoePenaltyDoubler = 140  # 🔴 Inflicts atk/spd/def/res -X on foe equal to current penalty on each stat
-    DualStrike = 143  # 🔴 If unit initiates combat and is adjacent to unit with DualStrike, unit attacks twice
-    TraverseTerrain = 144  # 🔵 Ignores slow terrain (bushes/trenches)
-    ReduceAoE = 145  # 🔴 Reduces non-Røkkr AoE damage taken by 80%
-    NullPenalties = 146  # 🔴 Neutralizes unit's penalties in combat
-    Hexblade = 147  # 🔴 Damage inflicted using lower of foe's def or res (applies to AoE skills)
-    RallySpectrum = 150 # 🔴 Grants atk/spd/def/res +5 and grants -1 cooldown at start of combat to allies with brave (currently enabled) or slaying effects, otherwise grants -2 cooldown
-    AssignDecoy = 151 # 🔴 Unit is granted savior effect for whatever default range their weapon is, fails if unit currently has savior skill
-    DeepStar = 152 # 🔴 In unit's first combat where foe initiates combat, reduces first hit (if Brave eff., first two hits) by 80%
-
 # effects distributed to allies/foes within their combats
 # this is a demo, final version should be placed within the map and initialized at the start of game
 
@@ -2811,8 +2521,6 @@ exEffect = {"atkRein": 5, "defRein": 5}
 flowerofease_base = {"atkRein": 3, "defRein": 3, "resRein": 3}
 flowerofease_ref = {"atkRein": 4, "defRein": 4, "resRein": 4}
 
-mirabilis = Hero("Mirabilis", "Mirabilis", 0, 0, 41, 35, 16, 35, 38, "Sword", 2, None, None, None, None, None, None, None, None)
-
 class EffectField():
     def __init__(self, owner, range, condition, affectSelf, affectedSide, effect):
         self.owner = owner
@@ -2822,7 +2530,8 @@ class EffectField():
         self.affectedSide = affectedSide # 0 for same as owner, 1 otherwise
         self.effect = effect
 
-flowerOfEaseField = EffectField(mirabilis, exRange1, exCondition, False, True, flowerofease_base)
+
+#flowerOfEaseField = EffectField(mirabilis, exRange1, exCondition, False, True, flowerofease_base)
 
 # maps are weighted graphs oh god
 
@@ -3206,71 +2915,6 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 #               weapon, assist, special, askill, bskill, cskill, sSeal,
 #               blessing):
 
-
-abel = Hero("Abel", "Abel", 0, 1, 39, 33, 32, 25, 25, "Lance", 1, pantherLance, None, aegis, hp5, swordBreaker3, None, None, None)
-alfonse = Hero("Alfonse", "Alfonse", 0, 0, 43, 35, 25, 32, 22, "Sword", 0, folkvangr, None, sol, deathBlow3, None, None, None, None)
-anna = Hero("Anna", "Anna", 0, 0, 41, 29, 38, 22, 28, "Axe", 0, noatun, None, astra, None, vantage3, None, None, None)
-arthur = Hero("Arthur", "F!Arthur", 0, 14, 43, 32, 29, 30, 24, "Axe", 0, arthurAxe, None, None, hp5, lanceBreaker3, None, None, None)
-azama = Hero("Azama", "Azama", 0, 14, 43, 21, 26, 32, 25, "Staff", 0, painPlus, None, None, None, None, None, None, None)
-azura = Hero("Azura", "Azura", 0, 14, 36, 31, 33, 21, 28, "Lance", 0, sapphireLancePlus, None, None, spd3, None, None, None, None)
-barst = Hero("Barst", "Barst", 0, 1, 46, 33, 32, 30, 17, "Axe", 0, devilAxe, None, bonfire, None, None, None, None, None)
-bartre = Hero("Bartre", "Bartre", 0, 6, 49, 36, 25, 33, 13, "Axe", 0, axeOfVirility, None, None, fury3, None, None, None, None)
-beruka = Hero("Beruka", "Beruka", 0, 14, 46, 29, 23, 37, 22, "Axe", 2, berukaAxe, None, glimmer, None, None, None, None, None)
-caeda = Hero("Caeda", "Caeda", 0, 1, 36, 25, 37, 24, 34, "Sword", 2, wingSword, None, None, dartingBlow3, None, None, None, None)
-cain = Hero("Cain", "Cain", 0, 1, 42, 32, 32, 27, 21, "Sword", 1, bullBlade, None, None, None, None, None, None, None)
-camilla = Hero("Camilla", "Camilla", 0, 14, 37, 30, 32, 28, 31, "Axe", 2, camillaAxe, None, draconicAura, dartingBlow3, None, None, None, None)
-catria = Hero("Catria", "Catria", 0, 1, 39, 31, 34, 29, 25, "Lance", 2, whitewingLance, None, moonbow, armoredBlow3, None, None, None, None)
-cecilia = Hero("Cecilia", "Cecilia", 0, 6, 36, 32, 25, 22, 29, "GTome", 1, tomeOfOrder, None, None, atk3, None, None, None, None)
-cherche = Hero("Cherche", "Cherche", 0, 13, 46, 38, 25, 32, 16, "Axe", 2, chercheAxe, None, None, atk3, None, None, None, None)
-chrom = Hero("Chrom", "Chrom", 0, 13, 47, 37, 25, 31, 17, "Sword", 0, awkFalchion, None, aether, None, None, None, None, None)
-clarine = Hero("Clarine", "Clarine", 0, 6, 35, 25, 33, 22, 29, "Staff", 1, fearPlus, None, None, res3, None, None, None, None)
-cordelia = Hero("Cordelia", "Cordelia", 0, 13, 40, 35, 35, 22, 25, "Lance", 2, cordeliaLance, None, moonbow, triangleAdept3, None, None, None, None)
-corrinF = Hero("Corrin", "F!Corrin", 0, 14, 41, 27, 34, 34, 21, "BDragon", 0, gloomBreath, None, None, deathBlow3, None, None, None, None)
-corrinM = Hero("Corrin", "M!Corrin", 0, 14, 42, 32, 32, 28, 24, "Sword", 0, yato, None, dragonFang, def3, None, None, None, None)
-donnel = Hero("Donnel", "Donnel", 0, 13, 43, 35, 29, 32, 23, "Lance", 0, hewnLance, None, None, hp5, None, None, None, None)
-
-eliwood = Hero("Eliwood", "Eliwood", 0, 7, 39, 31, 30, 23, 32, "Sword", 1, durandal, None, sacredCowl, None, axeBreaker3, None, None, None)
-hawkeye = Hero("Hawkeye", "Hawkeye", 0, 6, 45, 33, 22, 28, 30, "Axe", 0, guardianAxe, None, None, deathBlow3, None, None, None, None)
-hector = Hero("Hector", "Hector", 0, 7, 52, 36, 24, 37, 19, "Axe", 3, armads, None, pavise, distanctCounter, None, goadArmor, None, None)
-henry = Hero("Henry", "Henry", 0, 13, 45, 23, 22, 32, 25, "RTome", 0, corvusTome, None, ignis, None, gtomeBreaker3, None, None, None)
-lilina = Hero("Lilina", "Lilina", 0, 6, 35, 37, 25, 19, 31, "RTome", 0, forblaze, None, moonbow, atk3, None, None, None, None)
-lonqu = Hero("Lon'qu", "Lon'qu", 0, 13, 45, 29, 39, 22, 22, "Sword", 0, solitaryBlade, None, glimmer, spd3, vantage3, None, None, None)
-marth = Hero("Marth", "Marth", 0, 1, 41, 31, 34, 29, 23, "Sword", 0, marthFalchion, None, draconicAura, fury3, quickRiposte3, None, None, None)
-nino = Hero("Nino", "Nino", 0, 7, 33, 33, 36, 19, 26, "GTome", 0, irisTome, None, None, res3, None, None, None, None)
-nowi = Hero("Nowi", "Nowi", 0, 13, 45, 34, 27, 30, 27, "BDragon", 0, purifyingBreath, None, None, def3, None, None, None, None)
-robinM = Hero("Robin", "M!Robin", 0, 13, 40, 29, 29, 29, 22, "BTome", 0, tacticalBolt, None, bonfire, None, None, None, None, None)
-roy = Hero("Roy", "Roy", 0, 6, 44, 30, 31, 25, 28, "Sword", 0, bindingBlade, None, moonbow, triangleAdept3, None, None, None, None)
-serra = Hero("Serra", "Serra", 0, 7, 33, 30, 31, 21, 33, "Staff", 0, absorbPlus, None, None, None, None, None, None, None)
-sharena = Hero("Sharena", "Sharena", 0, 0, 43, 32, 32, 29, 22, "Lance", 0, fensalir, None, None, spd3, None, None, None, None)
-takumi = Hero("Takumi", "Takumi", 0, 14, 40, 32, 33, 25, 18, "CBow", 0, fujinYumi, None, None, closeCounter, vantage3, None, None, None)
-xander = Hero("Xander", "Xander", 0, 14, 44, 32, 24, 37, 17, "Sword", 1, siegfried, None, noontime, armoredBlow3, axeBreaker3, None, None, None)
-
-eirika = Hero("Eirika", "Eirika", 0, 8, 40, 30, 34, 27, 23, "Sword", 0, marthFalchion, None, None, None, None, None, None, None)
-ephraim = Hero("Ephraim", "Ephraim", 0, 8, 45, 35, 25, 32, 20, "Lance", 0, siegmundEff, None, moonbow, deathBlow3, None, None, None, None)
-seliph = Hero("Seliph", "Seliph", 0, 4, 47, 34, 24, 30, 22, "Sword", 0, divTyrfing, None, miracle, None, None, None, None, None)
-julia = Hero("Julia", "Julia", 0, 4, 38, 35, 26, 17, 32, "GTome", 0, naga, None, dragonFang, res3, None, None, None, None)
-
-klein = Hero("Klein", "Klein", 0, 14, 37, 32, 35, 20, 24, "CBow", 1, argentBow, None, draconicAura, deathBlow3, quickRiposte3, None, None, None)
-# sanaki = Hero("Sanaki", 30, 30, 30, 20, 20, "RTome", 0, None, None, None, None, None)
-# NOT YET HE'S GONNA RUIN EVERYTHING reinhardt = Hero("")
-# olwen = Hero("Olwen", 35, 30, 30, 20, 15, "BTome", 1, None, None, None, None, None)
-# eldigan = Hero("Eldigan", 40, 30, 25, 30, 15, "Sword", 1, None, None, None, None, None)
-# lachesis = Hero("Lachesis", 30, 30, 30, 15, 20, "Staff", 0, None, None, None, None, None)
-
-alm = Hero("Alm", "Alm", 0, 15, 45, 33, 30, 28, 22, "Sword", 0, almFalchion, None, draconicAura, atk3, windsweep3, None, None, None)
-
-ike = Hero("Ike", "Ike", 0, 9, 42, 35, 31, 32, 18, "Sword", 1, ragnell, None, aether, heavyBlade3, swordBreaker3, None, None, None)
-
-berkut = Hero("Berkut", "Berkut", 0, 15, 43, 34, 22, 31, 24, "Lance", 1, darkRoyalSpear, None, None, waterBoost3, None, wardCavalry, None, None)
-
-clive = Hero("Clive", "Clive", 0, 15, 45, 33, 25, 32, 19, "Lance", 1, lordlyLance, None, escutcheon, def3, None, None, None, None)
-
-innes = Hero("Innes", "Innes", 0, 8, 35, 33, 34, 14, 31, "CBow", 0, nidhogg, None, iceberg, fortressRes3, cancelAffinity3, None, None, None)
-
-mia = Hero("Mia", "Mia", 0, 9, 38, 32, 40, 28, 25, "Sword", 0, marthFalchion, None, sol, flashingBlade3, specialSpiral3, None, None, None)
-
-shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBlades, None, moonbow, deathBlow3, vantage3, None, None, None)
-
 # print(str(len(heroes)) + " Heroes present. " + str(927-len(heroes)) + " remain to be added.")
 
 # noah.addSpecialLines("\"I'm sorry, but you're in our way!\"",
@@ -3283,121 +2927,11 @@ shezM = Hero("Shez", "M!Shez", 0, 16, 40, 43, 41, 37, 26, "Sword", 0, crimsonBla
 #                     "\"Oh, we're not done yet!\"",
 #                     "\"We will seize our destiny!\"")
 
-alfonse.addSpecialLines("\"Above all...the mission!\"",
-                        "\"Let me through!\"",
-                        "\"My apologies.\"",
-                        "\"I'll open the way!\"")
-
-hawkeye.addSpecialLines("\"WUU-OOHHH!\"",
-                        "\"FIGHT!\"",
-                        "\"I know NOTHING of fear!\"",
-                        "\"I'm coming for YOU.\"")
-
-clive.addSpecialLines("\"No hard feelings.\"",
-                      "\"In the name of Zofia!\"",
-                      "\"Make your peace!\"",
-                      "\"Farewell!\"")
-
-nino.addSpecialLines("\"Ahhhhhhh!\"",
-                     "\"I won't lose! Not me!\"",
-                     "\"I can do this!\"",
-                     "\"I'll do my best!\"")
-
-roy.addSpecialLines("\"I will win!\"",
-                    "\"There's my opening!\"",
-                    "\"By my blade!\"",
-                    "\"I won't lose. I won't!\"")
-
-takumi.addSpecialLines("\"Oh, that's it!\"",
-                       "\"Die already!\"",
-                       "\"I'll shoot you down!\"",
-                       "\"You'll never hit this target!\"")
-
-corrinF.addSpecialLines("\"We won't give up!\"",
-                        "\"I've made my choice!\"",
-                        "\"I won't surrender!\"",
-                        "\"My path is certain!\"")
-
-cordelia.addSpecialLines("\"I can do this...\"",
-                         "\"Now you've angered me!\"",
-                         "\"I must prevail.\"",
-                         "\"I see an opening!\"")
-
-hector.addSpecialLines("\"I don't back down!\"",
-                       "\"Gutsy, aren't you?\"",
-                       "\"Enough chitchat!\"",
-                       "\"Here we go!\"")
-
-ephraim.addSpecialLines("\"Coming through!\"",
-                        "\"Wonderful!\"",
-                        "\"Give me more—more!\"",
-                        "\"All right. Let's fight!\"")
-
-anna.addSpecialLines("\"This one's on the house!\"",
-                     "\"More than you bargained for?\"",
-                     "\"We will triumph!\"",
-                     "\"Onward to victory!\"")
-
-klein.addSpecialLines("\"I won't miss.\"",
-                      "\"Such foolishness.\"",
-                      "\"At this range...\"",
-                      "\"Now, my turn.\"")
-
-lonqu.addSpecialLines("\"No hard feelings.\"",
-                      "\"Be silent!\"",
-                      "\"You're no challenge.\"",
-                      "\"Give up.\"")
-
-mia.addSpecialLines("\"Today is a good day!\"",
-                    "\"You're on!\"",
-                    "\"Take that, foe!\"",
-                    "\"Clash with me!\"")
-
-xander.addSpecialLines("\"Right where I want you!\"",
-                       "\"Prepare yourself!\"",
-                       "\"Down on your knees!\"",
-                       "\"You're going home—in pieces!\"")
-
-catria.addSpecialLines("\"Here I go!\"",
-                       "\"Finishing Blow!\"",
-                       "\"This ought to do it!\"",
-                       "\"No matter the cost!\"")
-
-beruka.addSpecialLines("\"Time to play!\"",
-                       "\"Finishing the mission.\"",
-                       "\"This is over!\"",
-                       "\"I will exterminate you!\"")
-
-eliwood.addSpecialLines("\"Off with you, fiend!\"",
-                        "\"This should do it!\"",
-                        "\"Now, take this!\"",
-                        "\"Watch me work!\"")
-
-abel.addSpecialLines("\"Make your peace.\"",
-                     "\"Back with you!\"",
-                     "\"No mercy!\"",
-                     "\"You've underestimated me.\"")
-
-ike.addSpecialLines("\"I won't let anyone die!\"",
-                    "\"Run while you can!\"",
-                    "\"I will finish you!\"",
-                    "\"Out of my way!\"")
-
-shezM.addSpecialLines("\"I'm not gonna die here!\"",
-                      "\"Here it comes!\"",
-                      "\"You're done!\"",
-                      "\"So much for you!\"")
-
-seliph.addSpecialLines("\"With all my strength!\"",
-                       "\"I will never yield!\"",
-                       "\"I will protect everyone!\"",
-                       "\"Until the end!\"")
-
 # playerUnits = [marth, robinM, takumi, ephraim]
 # enemyUnits = [nowi, alm, hector, bartre]
 
-alpha = mia
-omega = hector
+#alpha = mia
+#omega = hector
 #omega.inflictDamage(0)
 
 # alpha.inflict(Status.Panic)
@@ -3405,21 +2939,14 @@ omega = hector
 # omega.inflictStat(4,-1)
 #omega.chargeSpecial(0)
 
-combatEffects = [flowerOfEaseField]
-badaboom = simulate_combat(alpha,omega,False, 3, 0, combatEffects)
+#combatEffects = []
 
-print(badaboom)
+#badaboom = simulate_combat(alpha,omega,False, 3, 0, combatEffects)
+#print(badaboom)
 
 # APPLY THE EFFECTS ON THE UNITS BEING AFFECTED AND NOT THE UNIT CAUSING THE EFFECT ON THE MAP
 # IF MARTH IS FIGHTING EPHRAIM WITH THREATEN DEF 3, GIVE MARTH (IF UNIT IS WITHIN 2 SPACES WITHIN
 # EPHRAIM, GIVE -7 DEF. I AM A GENIUS.
-
-results = []
-# for hero in HeroDirectory().getHeroes():
-#    for hero2 in HeroDirectory().getHeroes():
-#        results.append(simulate_combat(hero,hero2,False))
-#        print(results[len(results)-1], "<---------------------------------------")
-# print(results)
 
 # ATK AND WEAPON SKILLS DO STACK W/ HOW PYTHON MERGES DICTIONARIES
 # JUST KEEP IN MIND ONCE YOU GET TO THAT BRIDGE WITH SKILLS NOT MEANT TO STACK
