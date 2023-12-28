@@ -112,22 +112,41 @@ class Structure:
 
 
 class Map:
-    def __init__(self):
-        self.tiles = [0] * 48
-        for i in range(0, 48):
-            self.tiles[i] = Tile(i, 0, 0, 0)
-        for i in range(0, 48):
-            if i // 6 != 0: self.tiles[i].south = self.tiles[i - 6]
-            if i // 6 != 7: self.tiles[i].north = self.tiles[i + 6]
-            if i % 6 != 0: self.tiles[i].west = self.tiles[i-1]
-            if i % 6 != 5: self.tiles[i].east = self.tiles[i+1]
+    def __init__(self, size_type):
+        if size_type == 0:
+            self.tiles = [0] * 48
+            for i in range(0, 48):
+                self.tiles[i] = Tile(i, 0, 0, 0)
+            for i in range(0, 48):
+                if i // 6 != 0: self.tiles[i].south = self.tiles[i - 6]
+                if i // 6 != 7: self.tiles[i].north = self.tiles[i + 6]
+                if i % 6 != 0: self.tiles[i].west = self.tiles[i-1]
+                if i % 6 != 5: self.tiles[i].east = self.tiles[i+1]
 
-    '''def __init__(self, terrain_map, def_tile_map, texture_map):
-        self.tiles = [48]
-        for i in range(0, 48):
-            self.tiles[i] = Tile(i, terrain_map[i], def_tile_map[i], texture_map[i])
-        for i in range(0, 48):
-            if i // 6 != 0: self.tiles[i].south = self.tiles[i - 6]
-            if i // 6 != 7: self.tiles[i].north = self.tiles[i + 6]
-            if i % 6 != 0: self.tiles[i].west = self.tiles[i - 1]
-            if i % 6 != 5: self.tiles[i].east = self.tiles[i + 1]'''
+
+        self.player_start_spaces = []
+        self.enemy_start_spaces = []
+
+    def add_start_space(self, tile_no, side):
+        if not side: self.player_start_spaces.append(tile_no)
+        else: self.enemy_start_spaces.append(tile_no)
+
+    def define_map(self, map_json):
+
+        i = 0
+        j = len(self.tiles)-1
+        while i < len(map_json["terrain"]):
+            ii = len(map_json["terrain"][0])-1
+            while ii > 0:
+                self.tiles[j].terrain = map_json["terrain"][i][ii]
+                ii -= 1
+                j -= 1
+            i += 1
+        print(map_json)
+        for x in map_json["defensiveTiles"]:
+            self.tiles[x].is_def_terrain = 1
+
+        for x in map_json["playerStart"]:
+            self.player_start_spaces.append(x)
+        for x in map_json["enemyStart"]:
+            self.enemy_start_spaces.append(x)

@@ -1,7 +1,9 @@
-from math import trunc
+from math import trunc, isnan
 from itertools import islice
 import random
 from enum import Enum
+import os
+import pandas as pd
 
 # CONSTANTS
 HP = 0
@@ -18,7 +20,6 @@ def sort_indexes(arr):
     indexes = list(range(len(arr)))
     sorted_indexes = sorted(indexes, key=lambda x: (arr[x], -x), reverse=True)
     return sorted_indexes
-
 
 # adjust level 1 stats to account for adjusting to/from 2★ or 4★ stats
 def change_highest_two(array, opp):
@@ -135,6 +136,8 @@ class Hero:
 
         self.pair_skill = None
 
+        self.resp = False
+
         self.combatsThisTurnUnity = 0
         self.combatsThurTurnEnemy = 0
         self.unitCombatInitiates = 0
@@ -156,13 +159,13 @@ class Hero:
 
         # apply base rarity changes
         self.rarity = new_rarity
-        for i in range(0, 2 - trunc(0.5 * self.rarity)):
+        for i in range(0, 3 - trunc(0.5 * self.rarity)):
             j = 0
             while j < 5:
                 self.stats[j] -= 1
                 j += 1
 
-        if self.rarity % 2 == 0: change_highest_two(self.stats, -1)
+        if self.rarity % 2 == 0: change_highest_two(self.stats, +1)
 
         self.stats[self.asset] += 1
         self.stats[self.flaw] -= 1
@@ -466,18 +469,21 @@ class Skill:
     def __str__(self): print(self.name + "\n" + self.desc)
 
 class Weapon:
-    def __init__(self, name, desc, mt, range, effects):
+    def __init__(self, name, intName, desc, mt, range, type, effects, exc_users):
         self.name = name
+        self.intName = intName
         self.desc = desc
-        self.mt = mt
-        self.range = range
+        self.mt = int(mt)
+        self.range = int(range)
+        self.type = type
         self.effects = effects
+        self.exc_users = exc_users
 
     def __str__(self): print(self.name + " \nMt: " + str(self.mt) + " Rng: " + str(self.range) + "\n" + self.desc)
 
 #def growthToStat(percentage):
 
-NIL_WEAPON = Weapon("Nil", "Nil Weapon", 0, 0, {})
+NIL_WEAPON = Weapon("Nil", "Nil Weapon", "", 0, 0, "Sword", {}, [])
 
 
 class SpecialType(Enum):
@@ -612,27 +618,80 @@ class Status(Enum):
     DeepStar = 152 # 🔴 In unit's first combat where foe initiates combat, reduces first hit (if Brave eff., first two hits) by 80%
     TimesGate = 156 # 🔵 Allies within 4 spaces can warp to a space adjacent to unit
     Incited = 157 # 🔴 If initiating combat, grants Atk/Spd/Def/Res = num spaces moved, max 3
-
-
-
+    FirstReduce40 = 158 # 🔴 If initiating combat, reduce damage of first attack received by 40%
+    HalfDamageReduction = 159 # 🔴 Cuts foe's damage reduction skill efficacy in half
 
 veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50, 40, 90], 5, 54)
-obscurité = Weapon("Obscurité", "idk", 14, 2, {"stuff":10})
+#obscurité = Weapon("Obscurité", "idk", 14, 2, {"stuff":10})
 
-print(veyle.stats)
+#print(veyle.stats)
 
 veyle.set_IVs(ATK, DEF, SPD)
 veyle.set_merges(10)
 veyle.set_dragonflowers(5)
 veyle.set_level(40)
 
-print(veyle.visible_stats)
+#print(veyle.visible_stats)
 
 # reset visible stats after each step of the process
-# NOTHING WILL BE DONE HERE UNTIL AFTER FINALS!!!!!!!
-# YEAH, GOT OFF OF HERE, DO OTHER STUFF YOU LAZY BONES
-# SHOO!!!!!!!!
 
-veyle.set_skill(obscurité, 0)
+#veyle.set_skill(obscurité, 0)
 
-print(veyle.visible_stats)
+#print(veyle.visible_stats)
+
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
+weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
+
+def makeHero(name):
+    row = hero_sheet.loc[hero_sheet['IntName'] == name]
+    n = row.index.values[0]
+
+    name = row.loc[n, 'Name']
+    int_name = row.loc[n, 'IntName']
+    game = row.loc[n, 'Game']
+    wpnType = row.loc[n, 'Weapon Type']
+    moveType = row.loc[n, 'Movement']
+    u_hp = row.loc[n, 'HP']
+    u_atk = row.loc[n, 'Atk']
+    u_spd = row.loc[n, 'Spd']
+    u_def = row.loc[n, 'Def']
+    u_res = row.loc[n, 'Res']
+    g_hp = row.loc[n, 'HP Grow']
+    g_atk = row.loc[n, 'Atk Grow']
+    g_spd = row.loc[n, 'Spd Grow']
+    g_def = row.loc[n, 'Def Grow']
+    g_res = row.loc[n, 'Res Grow']
+    dfl = row.loc[n, 'DFlowerLimit']
+    bvid = row.loc[n, 'BVID']
+
+    return Hero(name, int_name, game, wpnType, moveType, [u_hp, u_atk, u_spd, u_def, u_res], [g_hp, g_atk, g_spd, g_def, g_res], dfl, bvid)
+
+def makeWeapon(name):
+    # ﻿
+
+    row = weapon_sheet.loc[weapon_sheet['IntName'] == name]
+    n = row.index.values[0]
+
+    name = row.loc[n, 'Name']
+    int_name = row.loc[n, 'IntName']
+    desc = row.loc[n, 'Description']
+    might = row.loc[n, 'Might']
+    wpnType = row.loc[n, 'Type']
+    rng = row.loc[n, 'Range']
+    effects = {}
+    users = []
+
+    if not isnan(row.loc[n, 'Effect1']) and not isnan(row.loc[n, 'Level1']): effects.update({row.loc[n, 'Effect1']: row.loc[n, 'Level1']})
+    if not isnan(row.loc[n, 'Effect2']) and not isnan(row.loc[n, 'Level2']): effects.update({row.loc[n, 'Effect2']: row.loc[n, 'Level2']})
+    if not isnan(row.loc[n, 'Effect3']) and not isnan(row.loc[n, 'Level3']): effects.update({row.loc[n, 'Effect3']: row.loc[n, 'Level3']})
+    if not isnan(row.loc[n, 'Effect4']) and not isnan(row.loc[n, 'Level4']): effects.update({row.loc[n, 'Effect4']: row.loc[n, 'Level4']})
+    if not isnan(row.loc[n, 'Effect5']) and not isnan(row.loc[n, 'Level5']): effects.update({row.loc[n, 'Effect5']: row.loc[n, 'Level5']})
+
+    if not isnan(row.loc[n, 'ExclusiveUser1']): users.append(row.loc[n, 'ExclusiveUser1'])
+    if not isnan(row.loc[n, 'ExclusiveUser2']): users.append(row.loc[n, 'ExclusiveUser2'])
+    if not isnan(row.loc[n, 'ExclusiveUser3']): users.append(row.loc[n, 'ExclusiveUser3'])
+    if not isnan(row.loc[n, 'ExclusiveUser4']): users.append(row.loc[n, 'ExclusiveUser4'])
+
+    return Weapon(name, int_name, desc, might, rng, wpnType, effects, users)
+
