@@ -14,3 +14,5 @@ At its best, it'll be a way of preserving the game once it goes down. FEH's fina
 because it is a live-service game, it will happen.
 
 I am but a college student with this being a passion project, so this will be in progress for a while lol.
+
+Currently, the repository is in an unusable state, but will be cleaned up in the future for use.
