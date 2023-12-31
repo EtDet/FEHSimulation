@@ -575,6 +575,7 @@ class Status(Enum):
     Ploy = 53 # 🔴 Nullifies Bonus Doubler, Treachery, and Grand Strategy on unit
     Schism = 54 # 🔴 Nullifies DualStrike, TriangleAttack, and Pathfinder, unit does not count towards allies w/ TriangleAttack or DualStrike. If neutralized, those bonuses are neutralized as well
     DisableMiracle = 55 # 🔴 Disables skills which allow unit to survive with 1HP (besides special Miracle)
+    TimesGrip = 60 # 🔴 Inflicts Atk/Spd/Def/Res-4 during next combat, neutralizes skills during allies' combats
 
     # positive
 

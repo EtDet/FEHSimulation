@@ -137,12 +137,12 @@ class Map:
         j = len(self.tiles)-1
         while i < len(map_json["terrain"]):
             ii = len(map_json["terrain"][0])-1
-            while ii > 0:
+            while ii >= 0:
                 self.tiles[j].terrain = map_json["terrain"][i][ii]
                 ii -= 1
                 j -= 1
             i += 1
-        print(map_json)
+
         for x in map_json["defensiveTiles"]:
             self.tiles[x].is_def_terrain = 1
 

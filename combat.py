@@ -142,7 +142,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     #  Panic Status Effect
     AtkPanicFactor = 1
     DefPanicFactor = 1
-    panicFactor = [AtkPanicFactor, DefPanicFactor]
+    panicFactors = [AtkPanicFactor, DefPanicFactor]
 
     # buffs + debuffs calculation
     # throughout combat, PanicFactor * buff produces the current buff value
@@ -1168,6 +1168,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[3] -= 5
         defSkillFollowUps += 1
         atkPostCombatStatusesApplied[2].append(Status.Flash)
+
+    if "Mario":
+        "only Bros!"
 
     if "selfDmg" in atkSkills:  # damage to self after combat always
         atkSelfDmg += atkSkills["selfDmg"]
@@ -2535,127 +2538,6 @@ class EffectField():
 
 # maps are weighted graphs oh god
 
-folkvangr = Weapon("Fólkvangr", "At start of turn, if unit's HP ≤ 50%, grants Atk+5 for 1 turn.", 16, 1, {"defiantAtk": 2})
-fensalir = Weapon("Fensalir", "At start of turn, inflicts Atk-4 on foes within 2 spaces through their next actions.", 16, 1, {"threatAtk": 2})
-noatun = Weapon("Nóatún", "If unit's HP ≤ 40%, unit can move to a space adjacent to any ally.", 16, 1, {"escRoute": 2})
-lordlyLance = Weapon("Lordly Lance", "Effective against armored foes.", 16, 1, {"effArm": 56})
-guardianAxe = Weapon("Guardian's Axe", "Accelerates Special trigger (cooldown count-1)", 16, 1, {"slaying": 1})
-irisTome = Weapon("Iris's Tome", "Grants bonus to unit’s Atk = total bonuses on unit during combat.", 14, 2, {"combAtk": 0})
-bindingBlade = Weapon("Binding Blade", "If foe initiates combat, grants Def/Res+2 during combat.", 16, 1, {"defStance": 1, "resStance": 1})
-fujinYumi = Weapon("Fujin Yumi", "Effective against flying foes. If unit's HP ≥ 50%, unit can move through foes' spaces.", 14, 2, {"pass": 2, "effFly": 0})
-gloomBreath = Weapon("Gloom Breath",
-                     "At start of turn, inflicts Atk/Spd-7 on foes within 2 spaces through their next actions. After combat, if unit attacked, inflicts Atk/Spd-7 on target and foes within 2 spaces of target through their next actions. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",
-                     16, 1, {"threatAtk": 3, "threatSpd": 7, "sealAtk": 3, "sealSpd": 3, "atkSmoke": 3, "spdSmoke": 3, "dragonCheck": 0})
-cordeliaLance = Weapon("Cordelia's Lance", "Inflicts Spd-2. If unit initiates combat, unit attacks twice.", 10, 1, {"spdBoost": -2, "BraveAW": 1})
-armads = Weapon("Armads", "If unit's HP ≥ 80% and foe initiates combat, unit makes a guaranteed follow-up attack.", 16, 1, {"QRW": 2})
-pantherLance = Weapon("Panther Lance", "During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)", 16, 1,
-                      {"localBoost2Atk": 2, "localBoost2Def": 2})
-bullBlade = Weapon("Bull Blade", "During combat, boosts unit's Atk/Def by number of allies within 2 spaces × 2. (Maximum bonus of +6 to each stat.)", 16, 1, {"localBoost2Atk": 2, "localBoost2Def": 2})
-darkRoyalSpear = Weapon("Dark Royal Spear", "If foe initiates combat or if foe's HP = 100% at start of combat, grants Atk/Def/Res+5 to unit during combat.", 16, 1, {"berkutBoost": 5})
-chercheAxe = Weapon("Cherche's Axe", "Inflicts Spd-5. If unit initiates combat, unit attacks twice.", 11, 1, {"spdBoost": -5, "BraveAW": 1})
-durandal = Weapon("Durandal", "If unit initiates combat, grants Atk+4 during combat.", 16, 1, {"atkBlow": 2})
-argentBow = Weapon("Argent Bow", "Effective against flying foes. Inflicts Spd-2. If unit initiates combat, unit attacks twice.", 8, 2, {"effFly": 0, "spdBoost": -2, "BraveAW": 1})
-solitaryBlade = Weapon("Solitary Blade", "Accelerates Special trigger (cooldown count-1).", 16, 1, {"slaying": 1})
-purifyingBreath = Weapon("Purifying Breath",
-                         "Slows Special trigger (cooldown count+1). Unit can counterattack regardless of foe's range. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.", 14,
-                         1, {"slaying": -1, "dragonCheck": 0, "dCounter": 0})
-tomeOfOrder = Weapon("Tome of Order",
-                     "Effective against flying foes. Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.", 14, 2,
-                     {"effFly": 0, "colorlessAdv": 0})
-devilAxe = Weapon("Devil Axe", "Grants Atk/Spd/Def/Res+4 during combat, but if unit attacked, deals 4 damage to unit after combat.", 16, 1,
-                  {"atkBlow": 2, "spdBlow": 2, "defBlow": 2, "resBlow": 2, "atkStance": 2, "spdStance": 2, "defStance": 2, "resStance": 2, "atkOnlySelfDmg": 4})
-forblaze = Weapon("Forblaze", "At start of turn, inflicts Res-7 on foe on the enemy team with the highest Res through its next action.", 14, 2, {"atkChill": 3})
-corvusTome = Weapon("Corvus Tome", "Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.", 14, 2, {"colorlessAdv": 0})
-tacticalBolt = Weapon("Tactical Bolt", "Grants weapon-triangle advantage against colorless foes, and inflicts weapon-triangle disadvantage on colorless foes during combat.", 14, 2,
-                      {"colorlessAdv": 0})
-arthurAxe = Weapon("Arthur's Axe", "If a bonus granted by a skill like Rally or Hone is active on unit, grants Atk/Spd/Def/Res+3 during combat.", 16, 1,
-                   {"buffGrantsAtk": 3, "buffGrantsSpd": 3, "buffGrantsDef": 3, "buffGrantsRes": 3})
-axeOfVirility = Weapon("Axe of Virility", "Effective against armored foes.", 16, 1, {"effArm": 0})
-siegfried = Weapon("Siegfried", "Unit can counterattack regardless of foe's range.", 16, 1, {"dCounter": 0})
-berukaAxe = Weapon("Beruka's Axe", "Accelerates Special trigger (cooldown count-1).", 16, 1, {"slaying": 1})
-wingSword = Weapon("Wing Sword", "Effective against armored and cavalry foes.", 16, 1, {"effArm": 0, "effCav": 0})
-camillaAxe = Weapon("Camilla's Axe", "If unit is within 2 spaces of a cavalry or flying ally, grants Atk/Spd+4 during combat.", 16, 1, {"camillaBoost": 0})
-whitewingLance = Weapon("Whitewing Lance", "Accelerates Special trigger (cooldown count-1).", 16, 1, {"slaying": 1})
-marthFalchion = Weapon("Falchion", "Effective against dragon foes. At the start of every third turn, restores 10 HP.", 16, 1, {"effDragon": 0, "recover": 2})
-awkFalchion = Weapon("Falchion", "Effective against dragon foes. At the start of every third turn, restores 10 HP.", 16, 1, {"effDragon": 0, "recover": 2})
-yato = Weapon("Yato", "If unit initiates combat, grants Spd+4 during combat.", 16, 1, {"spdBlow": 2})
-hewnLance = Weapon("Hewn Lance", "Inflicts Spd-5. If unit initiates combat, unit attacks twice.", 11, 1, {"spdBoost": -5, "BraveAW": 1})
-stalwartSword = Weapon("Stalwart Sword", "If foe initiates combat, inflicts Atk-6 on foe during combat.", 16, 1, {"draugBlade": 0})
-effieLance = Weapon("Effie's Lance", "At start of combat, if unit's HP ≥ 50%, grants Atk+6 during combat.", 16, 1, {"effieLance": 0})
-eliseStaff = Weapon("Elise's Staff",
-                    "Grants Spd+3. Calculates damage from staff like other weapons. After combat, if unit attacked, inflicts 【Gravity】on target and foes within 1 space of target. 【Gravity】 Restricts target's movement to 1 space through its next action.",
-                    14, 2, {"spdBoost": 3, "wrathStaff": 3, "gravityLocal": 0})
-whitewingSpear = Weapon("Whitewing Spear", "Effective against armored foes.", 16, 1, {"effArm"})
-eternalBreath = Weapon("Eternal Breath",
-                       "At start of turn, if an ally is within 2 spaces of unit, grants Atk/Spd/Def/Res+5 to unit and allies within 2 spaces for 1 turn. If foe's Range = 2, calculates damage using the lower of foe's Def or Res.",
-                       16, 1, {"honeFae": 0, "dragonCheck": 20})
-feliciaPlate = Weapon("Felicia's Plate",
-                      "After combat, if unit attacked, inflicts Def/Res-7 on target and foes within 2 spaces through their next actions. Calculates damage using the lower of foe's Def or Res.", 14, 2,
-                      {"dagger": 7, "targetLowerDef": 0})
-
-americaSword = Weapon("American Sword", "Super American, believe me.", 16, 1, {"AMERICA":1776})
-
-assault = Weapon("Assault", "", 10, 2, {})
-pain = Weapon("Pain", "Deals 10 damage to target after combat.", 3, 2, {"atkOnlyOtherDmg": 10})
-painPlus = Weapon("Pain+", "Deals 10 damage to target and foes within 2 spaces of target after combat.", 10, 2, {"atkOnlyOtherDmg": 10, "savageBlow": 4.5})
-absorb = Weapon("Absorb", "Restores HP = 50% of damage dealt.", 3, 2, {"absorb": 0})
-absorbPlus = Weapon("Absorb+", "Restores HP = 50% of damage dealt. After combat, if unit attacked, restores 7 HP to allies within 2 spaces of unit.", 7, 2, {"absorb": 0})
-fear = Weapon("Fear", "After combat, if unit attacked, inflicts Atk-6 on foe through its next action.", 5, 2, {"sealAtk": 2.5})
-fearPlus = Weapon("Fear+", "After combat, if unit attacked, inflicts Atk-7 on target and foes within 2 spaces of target through their next actions.", 12, 2, {"sealAtk": 3, "atkSmoke": 3})
-
-sapphireLance = Weapon("Sapphire Lance", "If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.", 8, 1, {"triangleAdeptW": 3})
-sapphireLancePlus = Weapon("Sapphire Lance+", "If unit has weapon-triangle advantage, boosts Atk by 20%. If unit has weapon-triangle disadvantage, reduces Atk by 20%.", 12, 1, {"triangleAdeptW": 3})
-
-siegmund = Weapon("Siegmund", "At start of turn, grants Atk+3 to adjacent allies for 1 turn.", 16, 1, {"honeAtk": 2})
-siegmundEff = Weapon("Siegmund (+Eff)", "At start of turn, grants Atk+4 to adjacent allies for 1 turn. If unit's HP ≥ 90% and unit initiates combat, unit makes a guaranteed follow-up attack", 16, 1,
-                     {"HPBoost": 3, "FollowUpEph": 0})
-tyrfingSpd = Weapon("Tyrfing (+Spd)", "At start of combat, if unit's HP ≥ 50%, grants: “If unit’s HP > 1 and foe would reduce unit’s HP to 0, unit survives with 1 HP. (Once per combat. Does not stack.)”", 16, 1, {"pseudoMiracle":0, "HPBoost": 5, "spdBoost": 3})
-naga = Weapon("Naga", "Effective against dragon foes. If foe initiates combat, grants Def/Res+2 during combat.", 14, 2, {"defStance": 1, "resStance": 1, "effDragon": 0})
-
-almFalchion = Weapon("Falchion", "Effective against dragons. At the start of every third turn, unit recovers 10 HP.", 16, 1, {"effDragon": 0, "recover": 2})
-ragnell = Weapon("Ragnell", "Unit can counterattack regardless of foe's range.", 16, 1, {"dCounter": 0})
-
-nidhogg = Weapon("Nidhogg", "Effective against flying foes. During combat, boosts unit's Atk/Spd/Def/Res by number of adjacent allies × 2.", 14, 2, {"effFly": 0, "owlBoost": 2})
-
-alondite = Weapon("Alondite", "Unit can counterattack regardless of foe's range.", 16, 1, {"dCounter": 0})
-alonditeEff = Weapon("Alondite",
-                     "Enables counterattack regardless of distance if this unit is attacked. Accelerates Special trigger (cooldown count-1). At start of combat, if unit's HP ≥ 25%, grants Atk/Spd/Def/Res+4.",
-                     16, 1, {"dCounter": 0, "slaying": 1, "WILLYOUSURVIVE?": 4})
-
-divTyrfing = Weapon("Divine Tyrfing", "Grants Res+3. Reduces damage from magic foe's first attack by 50%.", 16, 1, {"divTyrfing":0, "resBoost": 3})
-
-resoluteBlade = Weapon("Resolute Blade", "Grants Atk+3. Deals +10 damage when Special triggers.", 16, 1, {"atkBoost": 3, "spDamageAdd": 10})
-
-reginleifEff = Weapon("Reginleif", """Effective against armored and cavalry foes. Grants Atk+3. Unit cannot be slowed by terrain. (Does not apply to impassable terrain.) At start of combat, if unit's Atk > foe's Atk or if【Bonus】is active on unit, grants Atk/Spd/Def/Res+4 to unit during combat. During combat, if unit's Atk > foe's Atk or if【Bonus】is active on unit, unit makes a guaranteed follow-up attack.
-
-【Bonus】
-All effects that last "for 1 turn" or "that turn only." Includes bonuses granted by a skill like Rally or Hone and positive status effects (extra movement or effects like Dominance).
-
-If【Bonus】is active on unit, enables 【Canto (Rem. +1)】. At start of even-numbered turns, unit can move 1 extra space. (That turn only. Does not stack.) At start of combat, if unit's HP ≥ 25%, grants Atk/Spd/Def/Res+4 to unit during combat, and if【Bonus】is active on unit, foe cannot make a follow-up attack.
-
-【Bonus】
-All effects that last "for 1 turn" or "that turn only." Includes bonuses granted by a skill like Rally or Hone and positive status effects (extra movement or effects like Dominance).
-
-【Canto (Rem. +1)】
-After an attack, Assist skill, or structure destruction, unit can move spaces = any movement not already used that turn +1. (If unit used a movement skill that warped them, its remaining movement is 0.)
-
-(Unit moves according to movement type. Once per turn. Cannot attack or assist. Only highest value applied. Does not stack. After moving, if a skill that grants another action would be triggered (like with Galeforce), Canto will trigger after the granted action. Unit's base movement has no effect on movement granted. Cannot warp (using skills like Wings of Mercy) a distance greater than unit's remaining movement +1.)""",
-                      16, 1, {"duoEphRef": 0})
-
-testOwain = Weapon("Test Owain", "TEMP", 16, 1, {"Sacred Stones Strike!": 4})
-
-amatsu = Weapon("Amatsu", "Accelerates Special trigger (cooldown count-1). At start of combat, if unit's HP ≥ 50%, unit can counterattack regardless of foe's range.", 16, 1,
-                {"amatsuDC": 0, "slaying": 1})
-
-alliedSword = Weapon("Allied Sword", "Grants Atk/Def+4 to allies within 2 spaces during combat. If unit is within 2 spaces of an ally, grants Atk/Def+4 to unit during combat.", 10, 1,
-                     {"driveAtk": 3, "driveDef": 3, "alliedAtk": 4, "alliedDef": 4})
-alliedSwordPlus = Weapon("Allied Sword+", "Grants Atk/Def+4 to allies within 2 spaces during combat. If unit is within 2 spaces of an ally, grants Atk/Def+4 to unit during combat.", 14, 1,
-                         {"driveAtk": 3, "driveDef": 3, "alliedAtk": 4, "alliedDef": 4})
-
-crimsonBlades = Weapon("Crimson Blades",
-                       "Grants Spd+5. Inflicts Def/Res-5. Unit attacks twice. At start of combat, the following effects will occur based on unit's HP: if ≥ 20%, grants Special cooldown charge +1 to unit per attack (only highest value applied; does not stack), and also, if ≥ 40%, reduces damage from foe's first attack during combat by 40%.",
-                       11, 1, {"spdBoost": 5, "defBoost": -5, "resBoost": -5, "BraveBW": 0, "shez!": 0})
-
 # SPECIALS
 daylight = Special("Daylight", "Restores HP = 30% of damage dealt.", {"healSelf": 3}, 3, SpecialType.Offense)
 noontime = Special("Noontime", "Restores HP = 30% of damage dealt.", {"healSelf": 3}, 2, SpecialType.Offense)
@@ -2708,100 +2590,10 @@ miracle = Special("Miracle","If unit's HP > 1 and foe would reduce unit's HP to 
 
 # A SKILLS
 
-hp3 = Skill("HP +3", "Grants HP+3.", {"HPBoost": 3})
-hp4 = Skill("HP +4", "Grants HP+4.", {"HPBoost": 4})
-hp5 = Skill("HP +5", "Grants HP+5.", {"HPBoost": 5})
-atk1 = Skill("Attack +1", "Grants Atk+1", {"atkBoost": 1})
-atk2 = Skill("Attack +2", "Grants Atk+2", {"atkBoost": 2})
-atk3 = Skill("Attack +3", "Grants Atk+3", {"atkBoost": 3})
-spd1 = Skill("Speed +1", "Grants Spd+1", {"spdBoost": 1})
-spd2 = Skill("Speed +2", "Grants Spd+2", {"spdBoost": 2})
-spd3 = Skill("Speed +3", "Grants Spd+3", {"spdBoost": 3})
-def1 = Skill("Defense +1", "Grants Def+1.", {"defBoost": 1})
-def2 = Skill("Defense +2", "Grants Def+2.", {"defBoost": 2})
-def3 = Skill("Defense +3", "Grants Def+3.", {"defBoost": 3})
-res1 = Skill("Resistance +1", "Grants Res+1.", {"resBoost": 1})
-res2 = Skill("Resistance +2", "Grants Res+2.", {"resBoost": 2})
-res3 = Skill("Resistance +3", "Grants Res+3.", {"resBoost": 3})
-
-hp_atk1 = Skill("HP/Atk 1", "Grants HP +3, Atk +1.", {"HPBoost": 3, "atkBoost": 1})
-hp_atk2 = Skill("HP/Atk 2", "Grants HP +4, Atk +2.", {"HPBoost": 4, "atkBoost": 2})
-hp_spd1 = Skill("HP/Spd 1", "Grants HP +3, Spd +1.", {"HPBoost": 3, "spdBoost": 1})
-hp_spd2 = Skill("HP/Spd 2", "Grants HP +4, Spd +2.", {"HPBoost": 4, "spdBoost": 2})
-hp_def1 = Skill("HP/Def 1", "Grants HP +3, Def +1.", {"HPBoost": 3, "defBoost": 1})
-hp_def2 = Skill("HP/Def 2", "Grants HP +4, Def +2.", {"HPBoost": 4, "defBoost": 2})
-hp_res1 = Skill("HP/Res 1", "Grants HP +3, Res +1.", {"HPBoost": 3, "resBoost": 1})
-hp_res2 = Skill("HP/Res 2", "Grants HP +4, Res +2.", {"HPBoost": 4, "resBoost": 2})
-
-atk_spd1 = Skill("Atk/Spd 1", "Grants Atk/Spd +1.", {"atkBoost": 1, "spdBoost": 1})
-atk_spd2 = Skill("Atk/Spd 2", "Grants Atk/Spd +2.", {"atkBoost": 2, "spdBoost": 2})
-atk_def1 = Skill("Attack/Def +1", "Grants Atk/Def +1.", {"atkBoost": 1, "defBoost": 1})
-atk_def2 = Skill("Attack/Def +2", "Grants Atk/Def +2.", {"atkBoost": 2, "defBoost": 2})
-atk_res1 = Skill("Attack/Res 1", "Grants Atk/Res +1.", {"atkBoost": 1, "resBoost": 1})
-atk_res2 = Skill("Attack/Res 2", "Grants Atk/Res +2.", {"atkBoost": 2, "resBoost": 2})
-
-spd_def1 = Skill("Spd/Def 1", "Grants Spd/Def +1.", {"spdBoost": 1, "defBoost": 1})
-spd_def2 = Skill("Spd/Def 2", "Grants Spd/Def +2.", {"spdBoost": 2, "defBoost": 2})
-spd_res1 = Skill("Spd/Res 1", "Grants Spd/Res +1.", {"spdBoost": 1, "resBoost": 1})
-spd_res2 = Skill("Spd/Res 2", "Grants Spd/Res +2.", {"spdBoost": 2, "resBoost": 2})
-
-def_res1 = Skill("Def/Res 1", "	Grants Def/Res +1.", {"defBoost": 1, "resBoost": 1})
-def_res2 = Skill("Def/Res 2", "	Grants Def/Res +2.", {"defBoost": 2, "resBoost": 2})
-
-fortressDef1 = Skill("Fortress Def 1", "Grants Def+3. Inflicts Atk-3.", {"defBoost": 3, "atkBoost": -3})
-fortressDef2 = Skill("Fortress Def 2", "Grants Def+4. Inflicts Atk-3.", {"defBoost": 4, "atkBoost": -3})
-fortressDef3 = Skill("Fortress Def 3", "Grants Def+5. Inflicts Atk-3.", {"defBoost": 5, "atkBoost": -3})
-fortressRes1 = Skill("Fortress Res 1", "Grants Res+3. Inflicts Atk-3.", {"resBoost": 3, "atkBoost": -3})
-fortressRes2 = Skill("Fortress Res 2", "Grants Res+4. Inflicts Atk-3.", {"resBoost": 4, "atkBoost": -3})
-fortressRes3 = Skill("Fortress Res 3", "Grants Res+5. Inflicts Atk-3.", {"resBoost": 5, "atkBoost": -3})
-fortressDefRes1 = Skill("Fort. Def/Res 1", "Grants Def/Res +3. Inflicts Atk -3.", {"defBoost": 3, "resBoost": 3, "atkBoost": -3})
-fortressDefRes2 = Skill("Fort. Def/Res 2", "Grants Def/Res +4. Inflicts Atk -3.", {"defBoost": 4, "resBoost": 4, "atkBoost": -3})
-fortressDefRes3 = Skill("Fort. Def/Res 3", "Grants Def/Res +6. Inflicts Atk -2.", {"defBoost": 6, "resBoost": 6, "atkBoost": -2})
-
-lifeAndDeath1 = Skill("Life and Death 1", "Grants Atk/Spd +3. Inflicts Def/Res -3.", {"atkBoost": 3, "spdBoost": 3, "defBoost": -3, "resBoost": -3})
-lifeAndDeath2 = Skill("Life and Death 2", "Grants Atk/Spd +4. Inflicts Def/Res -4.", {"atkBoost": 4, "spdBoost": 4, "defBoost": -4, "resBoost": -4})
-lifeAndDeath3 = Skill("Life and Death 3", "Grants Atk/Spd +5. Inflicts Def/Res -5.", {"atkBoost": 5, "spdBoost": 5, "defBoost": -5, "resBoost": -5})
-lifeAndDeath4 = Skill("Life and Death 4", "Grants Atk/Spd +7. Inflicts Def/Res -5.", {"atkBoost": 7, "spdBoost": 7, "defBoost": -5, "resBoost": -5})
-
 fury1 = Skill("Fury 1", "Grants Atk/Spd/Def/Res+1. After combat, deals 2 damage to unit.", {"atkBoost": 1, "spdBoost": 1, "defBoost": 1, "resBoost": 1, "selfDmg": 2})
 fury2 = Skill("Fury 2", "Grants Atk/Spd/Def/Res+2. After combat, deals 4 damage to unit.", {"atkBoost": 2, "spdBoost": 2, "defBoost": 2, "resBoost": 2, "selfDmg": 4})
 fury3 = Skill("Fury 3", "Grants Atk/Spd/Def/Res+3. After combat, deals 6 damage to unit.", {"atkBoost": 3, "spdBoost": 3, "defBoost": 3, "resBoost": 3, "selfDmg": 6})
 fury4 = Skill("Fury 4", "Grants Atk/Spd/Def/Res+4. After combat, deals 8 damage to unit.", {"atkBoost": 4, "spdBoost": 4, "defBoost": 4, "resBoost": 4, "selfDmg": 8})
-
-solidGround1 = Skill("Solid Ground 1", "Grants Atk/Def+3. Inflicts Res-3.", {"atkBoost": 3, "defBoost": 3, "resBoost": -3})
-solidGround2 = Skill("Solid Ground 2", "Grants Atk/Def+4. Inflicts Res-4.", {"atkBoost": 4, "defBoost": 4, "resBoost": -4})
-solidGround3 = Skill("Solid Ground 3", "Grants Atk/Def+5. Inflicts Res-5.", {"atkBoost": 5, "defBoost": 5, "resBoost": -5})
-solidGround4 = Skill("Solid Ground 4", "Grants Atk/Def+7. Inflicts Res-5.", {"atkBoost": 7, "defBoost": 7, "resBoost": -5})
-stillWater1 = Skill("Still Water 1", "Grants Atk/Res+3. Inflicts Def-3.", {"atkBoost": 3, "resBoost": 3, "defBoost": -3})
-stillWater2 = Skill("Still Water 2", "Grants Atk/Res+4. Inflicts Def-4.", {"atkBoost": 4, "resBoost": 4, "defBoost": -4})
-stillWater3 = Skill("Still Water 3", "Grants Atk/Res+5. Inflicts Def-5.", {"atkBoost": 5, "resBoost": 5, "defBoost": -5})
-stillWater4 = Skill("Still Water 4", "Grants Atk/Res+7. Inflicts Def-5.", {"atkBoost": 7, "resBoost": 7, "defBoost": -5})
-
-deathBlow1 = Skill("Death Blow 1", "If unit initiates combat, grants Atk+2 during combat.", {"atkBlow": 1})
-deathBlow2 = Skill("Death Blow 2", "If unit initiates combat, grants Atk+4 during combat.", {"atkBlow": 2})
-deathBlow3 = Skill("Death Blow 3", "If unit initiates combat, grants Atk+6 during combat.", {"atkBlow": 3})
-dartingBlow1 = Skill("Darting Blow 1", "If unit initiates combat, grants Spd+2 during combat.", {"spdBlow": 1})
-dartingBlow2 = Skill("Darting Blow 2", "If unit initiates combat, grants Spd+4 during combat.", {"spdBlow": 2})
-dartingBlow3 = Skill("Darting Blow 3", "If unit initiates combat, grants Spd+6 during combat.", {"spdBlow": 3})
-armoredBlow1 = Skill("Armored Blow 1", "If unit initiates combat, grants Def+2 during combat.", {"defBlow": 1})
-armoredBlow2 = Skill("Armored Blow 2", "If unit initiates combat, grants Def+4 during combat.", {"defBlow": 2})
-armoredBlow3 = Skill("Armored Blow 3", "If unit initiates combat, grants Def+6 during combat.", {"defBlow": 3})
-wardingBlow1 = Skill("Warding Blow 1", "If unit initiates combat, grants Res+2 during combat.", {"resBlow": 1})
-wardingBlow2 = Skill("Warding Blow 2", "If unit initiates combat, grants Res+4 during combat.", {"resBlow": 2})
-wardingBlow3 = Skill("Warding Blow 3", "If unit initiates combat, grants Res+6 during combat.", {"resBlow": 3})
-
-fierceStance1 = Skill("Fierce Stance 1", "If foe initiates combat, grants Atk+2 during combat.", {"atkStance": 1})
-fierceStance2 = Skill("Fierce Stance 2", "If foe initiates combat, grants Atk+4 during combat.", {"atkStance": 2})
-fierceStance3 = Skill("Fierce Stance 3", "If foe initiates combat, grants Atk+6 during combat.", {"atkStance": 3})
-dartingStance1 = Skill("Darting Stance 1", "If foe initiates combat, grants Spd+2 during combat.", {"spdStance": 1})
-dartingStance2 = Skill("Darting Stance 2", "If foe initiates combat, grants Spd+4 during combat.", {"spdStance": 2})
-dartingStance3 = Skill("Darting Stance 3", "If foe initiates combat, grants Spd+6 during combat.", {"spdStance": 3})
-steadyStance1 = Skill("Steady Stance 1", "If foe initiates combat, grants Def+2 during combat.", {"defStance": 1})
-steadyStance2 = Skill("Steady Stance 2", "If foe initiates combat, grants Def+4 during combat.", {"defStance": 2})
-steadyStance3 = Skill("Steady Stance 3", "If foe initiates combat, grants Def+6 during combat.", {"defStance": 3})
-wardingStance1 = Skill("Warding Stance 1", "If foe initiates combat, grants Res+2 during combat.", {"resStance": 1})
-wardingStance2 = Skill("Warding Stance 2", "If foe initiates combat, grants Res+4 during combat.", {"resStance": 2})
-wardingStance3 = Skill("Warding Stance 3", "If foe initiates combat, grants Res+6 during combat.", {"resStance": 3})
 
 waterBoost3 = Skill("Water Boost 3", "At start of combat, if unit's HP ≥ foe's HP+3, grants Res+6 during combat.", {"waterBoost": 3})
 
@@ -2809,7 +2601,7 @@ heavyBlade3 = Skill("Heavy Blade 3", "If unit's Atk > foe's Atk, grants Special 
 flashingBlade3 = Skill("Flashing Blade 3", "If unit's Spd > foe's Spd, grants Special cooldown charge +1 per unit's attack. (Only highest value applied. Does not stack.)", {"flashingBlade": 3})
 # HIGHEST TRIANGLE ADEPT LEVEL USED
 # SMALLER LEVELS DO NOT STACK WITH ONE ANOTHER
-# HIGHEST LEVEL IS BASICALLY MAX
+# ONLY HIGHEST LEVEL USED
 
 triangleAdept1 = Skill("Triangle Adept 1", "If unit has weapon-triangle advantage, boosts Atk by 10%. If unit has weapon-triangle disadvantage, reduces Atk by 10%.", {"triAdeptS": 1})
 triangleAdept2 = Skill("Triangle Adept 2", "If unit has weapon-triangle advantage, boosts Atk by 15%. If unit has weapon-triangle disadvantage, reduces Atk by 15%.", {"triAdeptS": 2})
@@ -2822,43 +2614,15 @@ svalinnShield = Skill("Svalinn Shield", "Neutralizes \"effective against armored
 graniShield = Skill("Grani's Shield", "Neutralizes \"effective against cavalry\" bonuses.", {"nullEffCav": 0})
 ioteShield = Skill("Iote's Shield", "Neutralizes \"effective against fliers\" bonuses.", {"nullEffFly": 0})
 
-bonusDoubler1 = Skill("Bonus Doubler 1", "Grants bonus to Atk/Spd/Def/Res during combat = 50% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler": 1})
-bonusDoubler2 = Skill("Bonus Doubler 2", "Grants bonus to Atk/Spd/Def/Res during combat = 75% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler": 2})
-bonusDoubler3 = Skill("Bonus Doubler 3", "Grants bonus to Atk/Spd/Def/Res during combat = current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoubler": 3})
+bonusDoubler1 = Skill("Bonus Doubler 1", "Grants bonus to Atk/Spd/Def/Res during combat = 50% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoublerSk": 1})
+bonusDoubler2 = Skill("Bonus Doubler 2", "Grants bonus to Atk/Spd/Def/Res during combat = 75% of current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoublerSk": 2})
+bonusDoubler3 = Skill("Bonus Doubler 3", "Grants bonus to Atk/Spd/Def/Res during combat = current bonus on each of unit’s stats. Calculates each stat bonus independently.", {"bonusDoublerSk": 3})
 
 sorceryBlade1 = Skill("Sorcery Blade 1", "At start of combat, if unit’s HP = 100% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 1})
 sorceryBlade2 = Skill("Sorcery Blade 2", "At start of combat, if unit’s HP ≥ 50% and unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 2})
 sorceryBlade3 = Skill("Sorcery Blade 3", "At start of combat, if unit is adjacent to a magic ally, calculates damage using the lower of foe’s Def or Res.", {"sorceryBlade": 3})
 
 # B SKILLS
-
-swordBreaker1 = Skill("Swordbreaker 1", "If unit's HP ≥ 90% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"swordBreak": 1})
-swordBreaker2 = Skill("Swordbreaker 2", "If unit's HP ≥ 70% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"swordBreak": 2})
-swordBreaker3 = Skill("Swordbreaker 3", "If unit's HP ≥ 50% in combat against a sword foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"swordBreak": 3})
-lanceBreaker1 = Skill("Lancebreaker 1", "If unit's HP ≥ 90% in combat against a lance foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"lanceBreak": 1})
-lanceBreaker2 = Skill("Lancebreaker 2", "If unit's HP ≥ 70% in combat against a lance foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"lanceBreak": 2})
-lanceBreaker3 = Skill("Lancebreaker 3", "If unit's HP ≥ 50% in combat against a lance foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"lanceBreak": 3})
-axeBreaker1 = Skill("Axebreaker 1", "If unit's HP ≥ 90% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"axeBreak": 1})
-axeBreaker2 = Skill("Axebreaker 2", "If unit's HP ≥ 70% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"axeBreak": 2})
-axeBreaker3 = Skill("Axebreaker 3", "If unit's HP ≥ 50% in combat against an axe foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"axeBreak": 3})
-rtomeBreaker1 = Skill("R Tomebreaker 1", "If unit's HP ≥ 90% in combat against a red tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"rtomeBreak": 1})
-rtomeBreaker2 = Skill("R Tomebreaker 2", "If unit's HP ≥ 70% in combat against a red tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"rtomeBreak": 2})
-rtomeBreaker3 = Skill("R Tomebreaker 3", "If unit's HP ≥ 50% in combat against a red tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"rtomeBreak": 3})
-btomeBreaker1 = Skill("B Tomebreaker 1", "If unit's HP ≥ 90% in combat against a blue tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"btomeBreak": 1})
-btomeBreaker2 = Skill("B Tomebreaker 2", "If unit's HP ≥ 70% in combat against a blue tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"btomeBreak": 2})
-btomeBreaker3 = Skill("B Tomebreaker 3", "If unit's HP ≥ 50% in combat against a blue tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"btomeBreak": 3})
-gtomeBreaker1 = Skill("G Tomebreaker 1", "If unit's HP ≥ 90% in combat against a green tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"gtomeBreak": 1})
-gtomeBreaker2 = Skill("G Tomebreaker 2", "If unit's HP ≥ 70% in combat against a green tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"gtomeBreak": 2})
-gtomeBreaker3 = Skill("G Tomebreaker 3", "If unit's HP ≥ 50% in combat against a green tome foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"gtomeBreak": 3})
-bowBreaker1 = Skill("Bowbreaker 1", "If unit's HP ≥ 90% in combat against a colorless bow foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"cBowBreaker": 1})
-bowBreaker2 = Skill("Bowbreaker 2", "If unit's HP ≥ 70% in combat against a colorless bow foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"cBowBreaker": 2})
-bowBreaker3 = Skill("Bowbreaker 3", "If unit's HP ≥ 50% in combat against a colorless bow foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.", {"cBowBreaker": 3})
-daggerBreaker1 = Skill("Daggerbreaker 1", "If unit's HP ≥ 90% in combat against a colorless dagger foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",
-                       {"cDaggerBreaker": 1})
-daggerBreaker2 = Skill("Daggerbreaker 2", "If unit's HP ≥ 70% in combat against a colorless dagger foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",
-                       {"cDaggerBreaker": 2})
-daggerBreaker3 = Skill("Daggerbreaker 3", "If unit's HP ≥ 50% in combat against a colorless dagger foe, unit makes a guaranteed follow-up attack and foe cannot make a follow-up attack.",
-                       {"cDaggerBreaker": 3})
 
 specialSpiral3 = Skill ("Special Spiral 3","I dunno", {"specialSpiralS":3})
 
@@ -2926,9 +2690,6 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 #                     "\"For the greater good!\"",
 #                     "\"Oh, we're not done yet!\"",
 #                     "\"We will seize our destiny!\"")
-
-# playerUnits = [marth, robinM, takumi, ephraim]
-# enemyUnits = [nowi, alm, hector, bartre]
 
 #alpha = mia
 #omega = hector
