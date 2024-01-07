@@ -121,6 +121,12 @@ class Hero:
         self.specialCount = -1
         self.specialMax = -1
 
+        # Interval IV Guide
+        # A A A, neutral w/o asc asset
+        # A A B, neutral w/ asc asset B
+        # A B A, asset A, flaw B, no asc asset
+        # A B B, asset A, flaw and asc asset cancel out
+        # A B C, asset A, flaw B, asc asset C
         self.asset = ATK
         self.flaw = ATK
         self.asc_asset = ATK
@@ -159,7 +165,7 @@ class Hero:
 
         # apply base rarity changes
         self.rarity = new_rarity
-        for i in range(0, 3 - trunc(0.5 * self.rarity)):
+        for i in range(0, 2 - trunc(0.5 * self.rarity)):
             j = 0
             while j < 5:
                 self.stats[j] -= 1
@@ -172,21 +178,30 @@ class Hero:
         if self.asset != self.asc_asset:
             self.stats[self.asc_asset] += 1
 
-        self.visible_stats = self.stats[:]
+        self.set_visible_stats()
 
     def set_merges(self, merges):
 
         self.set_rarity(self.rarity)
 
-        sort_i = sort_indexes(self.stats[:])
+        temp_stats = self.stats[:]
+        if self.asset != self.asc_asset and self.asset == self.flaw and merges > 0:
+            temp_stats[self.asc_asset] = -1
+
+        temp_stats_2 = self.stats[:]
+        if self.asset != self.asc_asset and self.asset == self.flaw:
+            temp_stats_2[self.asc_asset] -= 1
+
+        first_merge_sort_i = sort_indexes(temp_stats)
+        sort_i = sort_indexes(temp_stats_2)
 
         i = 1
         while i < merges + 1:
             if i == 1:
                 if self.asset == self.flaw:
-                    self.stats[sort_i[0]] += 1
-                    self.stats[sort_i[1]] += 1
-                    self.stats[sort_i[2]] += 1
+                    self.stats[first_merge_sort_i[0]] += 1
+                    self.stats[first_merge_sort_i[1]] += 1
+                    self.stats[first_merge_sort_i[2]] += 1
                 else:
                     self.stats[self.flaw] += 1
 
@@ -209,7 +224,10 @@ class Hero:
             i += 1
 
         self.merges = merges
-        self.visible_stats = self.stats[:]
+
+
+
+        self.set_visible_stats()
 
     def set_dragonflowers(self, flowers):
         # set to level 1
@@ -227,7 +245,7 @@ class Hero:
             i += 1
 
         self.flowers = flowers
-        self.visible_stats = self.stats[:]
+        self.set_visible_stats()
 
     def set_level(self, level):
 
@@ -266,7 +284,8 @@ class Hero:
                 self.stats[i] += int(vector[j%40]) + required_vector // 2496
                 j += 1
 
-        self.visible_stats = self.stats[:]
+        self.level = level
+        self.set_visible_stats()
 
     def set_IVs(self, new_asset, new_flaw, new_asc_asset):
 
@@ -310,7 +329,6 @@ class Hero:
 
         if "HPBoost" in skill.effects:
             self.skill_stat_mods[HP] += skill.effects["HPBoost"]
-            #self.HPcur = idk?????
         if "atkBoost" in skill.effects: self.skill_stat_mods[ATK] += skill.effects["atkBoost"]
         if "spdBoost" in skill.effects: self.skill_stat_mods[SPD] += skill.effects["spdBoost"]
         if "defBoost" in skill.effects: self.skill_stat_mods[DEF] += skill.effects["defBoost"]
@@ -334,6 +352,8 @@ class Hero:
             self.visible_stats[i] = self.stats[i] + self.skill_stat_mods[i]
             self.visible_stats[i] = max(min(self.visible_stats[i], 99), 0)
             i += 1
+
+        self.HPcur = self.visible_stats[0]
 
     def inflict(self, status):
         if status.value > 100 and status not in self.statusPos:
@@ -591,7 +611,7 @@ class Status(Enum):
     ResonanceShields = 115  # 🔴 Grants Def/Res+4 during combat and foe cannot make a follow-up attack in unit's first combat
     Vantage = 116  # 🔴 Unit counterattacks before foe's first attack in enemy phase
     FallenStar = 118  # 🔴 Reduces damage from foe's first attack by 80% in unit's first combat in player phase and first combat in enemy phase
-    CancelFollowUp = 119  # 🔴 Foe cannot make a follow-up attack
+    DenyFollowUp = 119  # 🔴 Foe cannot make a follow-up attack
     NullEffFlyers = 120  # 🔴 Gain immunity to "eff against flyers"
     Dodge = 121  # 🔴 If unit's spd > foe's spd, reduces combat & non-Røkkr AoE damage by X%, X = (unit's spd - foe's spd) * 4, max of 40%
     MakeFollowUp = 122  # 🔴 Unit makes follow-up attack when initiating combat
@@ -627,10 +647,14 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 
 #print(veyle.stats)
 
-veyle.set_IVs(ATK, DEF, SPD)
-veyle.set_merges(10)
-veyle.set_dragonflowers(5)
-veyle.set_level(40)
+#veyle.set_IVs(ATK, DEF, SPD)
+
+#print(veyle.level)
+#print(veyle.visible_stats)
+
+#veyle.set_merges(10)
+#veyle.set_dragonflowers(5)
+#veyle.set_level(40)
 
 #print(veyle.visible_stats)
 

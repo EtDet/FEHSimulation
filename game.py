@@ -9,6 +9,8 @@ import json
 PLAYER = 0
 ENEMY = 1
 
+RARITY_COLORS = ["#43464f", "#859ba8", "#8a4d15", "#c7d6d6", "#ffc012"]
+
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
 # A possible movement action by a unit
@@ -36,6 +38,9 @@ map0.define_map(data)
 bolt = Weapon("Tactical Bolt", "Tactical Bolt", "idk", 14, 2, "Sword", {"colorlessAdv": 0}, ["Robin"])
 robin = Hero("Robin", "M!Robin", 0, "BTome", 0, [40,29,29,29,22], [50, 50, 50, 50, 40], 30, 67)
 robin.set_skill(bolt, 0)
+
+robin.set_IVs(ATK,DEF,HP)
+robin.set_level(40)
 
 
 
@@ -185,6 +190,8 @@ def get_attack_tiles(tile_num, range):
 
     return result
 
+# some arrow images are cropped unusually
+# this snaps them back to correct place
 def get_arrow_offsets(arrow_num):
     if arrow_num == 0: return(16, 0)
     if arrow_num == 1: return(16, 1)
@@ -193,14 +200,14 @@ def get_arrow_offsets(arrow_num):
     if arrow_num == 5: return(16, 0)
     if arrow_num == 6: return(0, 2)
     if arrow_num == 7: return(0, 1)
-    if arrow_num == 8: return(0, 0)
     if arrow_num == 9: return (0, 1)
     if arrow_num == 10: return(0, 2)
     if arrow_num == 11: return(0, 2)
-    if arrow_num == 12: return(0,0)
-    if arrow_num == 13: return (0, 0)
 
     return (0,0)
+
+
+
 
 def start_sim(player_units, enemy_units, chosen_map):
     if not chosen_map.player_start_spaces or not chosen_map.enemy_start_spaces:
@@ -210,6 +217,144 @@ def start_sim(player_units, enemy_units, chosen_map):
     if not player_units or len(player_units) > len(chosen_map.player_start_spaces):
         print("Error 101: Invalid number of player units")
         return -1
+
+    def set_banner(hero: Hero):
+        moves = {0: "Infantry", 1: "Cavalry", 2: "Flyer", 3: "Armored"}
+        weapons = {
+            "Sword": (0, "Sword"), "Lance": (1, "Lance"), "Axe": (2, "Axe"),
+            "Staff": (15, "Staff"),
+            "RTome": (11, "Red Tome"), "BTome": (12, "Blue Tome"), "GTome": (13, "Green Tome"), "CTome": (14, "Colorless Tome"),
+            "CBow": (6, "Colorless Bow"), "RBow": (3, "Red Bow"), "BBow": (4, "Blue Blow"), "GBow": (5, "Green Bow"),
+            "CDagger": (10, "Colorless Dagger"), "RDagger": (7, "Red Dagger"), "BDagger": (8, "Blue Dagger"), "GDagger": (9, "Green Dagger"),
+            "RDragon": (16, "Red Dragon"), "BDragon": (17, "Blue Dragon"), "GDragon": (18, "Green Dragon"), "CDragon": (19, "Colorless Dragon"),
+            "RBeast": (20, "Red Beast"), "BBeast": (21, "Blue Beast"), "GBeast": (22, "Green Beast"), "CBeast": (23, "Colorless Beast")
+        }
+
+        name = hero.name
+        move_type = moves[hero.move]
+        weapon_type = weapons[hero.wpnType]
+        level = hero.level
+        merges = hero.merges
+        stats = hero.visible_stats[:]
+        buffs = hero.buffs[:]
+        debuffs = hero.debuffs[:]
+
+        blessing = hero.blessing
+
+        weapon = "-"
+        assist = "-"
+        special = "-"
+        askill = "-"
+        bskill = "-"
+        cskill = "-"
+        sSeal = "-"
+        xskill = "-"
+
+        if hero.weapon is not None: weapon = hero.weapon.name
+        if hero.assist is not None: assist = hero.assist.name
+        if hero.special is not None: special = hero.special.name
+        if hero.askill is not None: askill = hero.askill.name
+        if hero.bskill is not None: bskill = hero.bskill.name
+        if hero.cskill is not None: cskill = hero.cskill.name
+        if hero.sSeal is not None: sSeal = hero.sSeal.name
+        if hero.xskill is not None: xskill = hero.xskill.name
+
+        print(name, move_type, weapon_type, level, merges, stats, buffs, debuffs, blessing, weapon, assist, special, askill, bskill, cskill, sSeal, xskill)
+
+        if hasattr(set_banner, "banner_rectangle") and set_banner.banner_rectangle:
+            canvas.delete(set_banner.banner_rectangle)
+
+        banner_color = "#18284f" if hero.side == 0 else "#541616"
+
+        set_banner.banner_rectangle = canvas.create_rectangle(0, 0, 539, 90, fill=banner_color, outline=RARITY_COLORS[hero.rarity-1])
+
+        unit_info_text = hero.name
+        unit_info_label = tk.Label(canvas, text=unit_info_text, bg=banner_color, font="nintendoP_Skip-D_003 10", relief="raised", width=13)
+        unit_info_label.place(x=10, y=5)
+
+        canvas.create_image(135, 6, anchor=tk.NW, image=move_icons[hero.move])
+        canvas.create_image(160, 4, anchor=tk.NW, image=weapon_icons[weapons[hero.wpnType][0]])
+
+        text_var = "Level " + str(hero.level)
+        merge_var = ""
+        if hero.merges > 0: merge_var = " + " + str(hero.merges)
+
+        unit_level_label = tk.Label(canvas, text=text_var + merge_var, bg=banner_color, font="nintendoP_Skip-D_003 10", relief="raised", width=11)
+        unit_level_label.place(x=187, y=5)
+
+        unit_stat_label = tk.Text(canvas, wrap=tk.WORD, height=2, width=20, font="nintendoP_Skip-D_003 10", bd=0, highlightthickness=0)
+
+        is_neutral_iv = hero.asset == hero.flaw
+        is_asc = hero.asset != hero.asc_asset
+        is_merged = hero.merges > 0
+
+        if (HP == hero.asset and not is_neutral_iv) or \
+                (HP == hero.asc_asset and is_neutral_iv and is_asc) or\
+                (HP == hero.asc_asset and not is_neutral_iv and hero.flaw == hero.asc_asset and is_merged) or \
+                (not is_neutral_iv and HP == hero.asc_asset and HP != hero.asset and HP != hero.flaw):
+            unit_stat_label.insert(tk.END, "HP ", ("blue", "hp"))
+        elif HP == hero.flaw and hero.asc_asset != hero.flaw and not is_neutral_iv and not is_merged:
+            unit_stat_label.insert(tk.END, "HP ", ("red", "hp"))
+        else:
+            unit_stat_label.insert(tk.END, "HP ", "normal")
+
+        unit_stat_label.insert(tk.END, str(hero.HPcur) + "/" + str(stats[0]), "hp")
+
+        if (ATK == hero.asset and not is_neutral_iv) or \
+                (ATK == hero.asc_asset and is_neutral_iv and is_asc) or\
+                (ATK == hero.asc_asset and not is_neutral_iv and hero.flaw == hero.asc_asset and is_merged) or \
+                (not is_neutral_iv and ATK == hero.asc_asset and ATK != hero.asset and ATK != hero.flaw):
+            unit_stat_label.insert(tk.END, " Atk ", ("blue", "atk"))
+        elif ATK == hero.flaw and hero.asc_asset != hero.flaw and not is_neutral_iv and not is_merged:
+            unit_stat_label.insert(tk.END, " Atk ", ("red", "atk"))
+        else:
+            unit_stat_label.insert(tk.END, " Atk ", "normal")
+
+        unit_stat_label.insert(tk.END, str(stats[1]), "atk")
+
+
+        if (SPD == hero.asset and not is_neutral_iv) or \
+                (SPD == hero.asc_asset and is_neutral_iv and is_asc) or\
+                (SPD == hero.asc_asset and not is_neutral_iv and hero.flaw == hero.asc_asset and is_merged) or \
+                (not is_neutral_iv and SPD == hero.asc_asset and SPD != hero.asset and SPD != hero.flaw):
+            unit_stat_label.insert(tk.END, " Spd ", ("blue", "spd"))
+        elif SPD == hero.flaw and hero.asc_asset != hero.flaw and not is_neutral_iv and not is_merged:
+            unit_stat_label.insert(tk.END, " Spd ", ("red", "spd"))
+        else:
+            unit_stat_label.insert(tk.END, " Spd ", "normal")
+
+        unit_stat_label.insert(tk.END, str(stats[2]), "spd")
+
+        unit_stat_label.insert(tk.END, "\n      " + str((hero.HPcur//stats[0]) * 100) + "%", "hp")
+
+        if (DEF == hero.asset and not is_neutral_iv) or \
+                (DEF == hero.asc_asset and is_neutral_iv and is_asc) or \
+                (DEF == hero.asc_asset and not is_neutral_iv and hero.flaw == hero.asc_asset and is_merged) or \
+                (not is_neutral_iv and DEF == hero.asc_asset and DEF != hero.asset and DEF != hero.flaw):
+            unit_stat_label.insert(tk.END, " Def ", ("blue", "def"))
+        elif DEF == hero.flaw and hero.asc_asset != hero.flaw and not is_neutral_iv and not is_merged:
+            unit_stat_label.insert(tk.END, " Def ", ("red", "res"))
+        else:
+            unit_stat_label.insert(tk.END, " Def ", "normal")
+
+        unit_stat_label.insert(tk.END, str(stats[3]), "def")
+
+        if (RES == hero.asset and not is_neutral_iv) or \
+                (RES == hero.asc_asset and is_neutral_iv and is_asc) or \
+                (RES == hero.asc_asset and not is_neutral_iv and hero.flaw == hero.asc_asset and is_merged) or \
+                (not is_neutral_iv and RES == hero.asc_asset and RES != hero.asset and RES != hero.flaw):
+            unit_stat_label.insert(tk.END, " Res ", ("blue", "res"))
+        elif RES == hero.flaw and hero.asc_asset != hero.flaw and not is_neutral_iv and not is_merged:
+            unit_stat_label.insert(tk.END, " Res ", ("red", "res"))
+        else:
+            unit_stat_label.insert(tk.END, " Res ", "normal")
+
+        unit_stat_label.insert(tk.END, str(stats[4]), "res")
+
+        unit_stat_label.tag_configure("blue", foreground="#5493bf")
+        unit_stat_label.tag_configure("red", foreground="#d15047")
+
+        unit_stat_label.place(x=100, y=34)
 
     def on_click(event):
 
@@ -221,6 +366,7 @@ def start_sim(player_units, enemy_units, chosen_map):
 
         # Check if any of the overlapping items are player units
         player_units_overlapping = [item for item in overlapping_items if item in player_sprite_IDs]
+        enemy_units_overlapping = [item for item in overlapping_items if item in enemy_sprite_IDs]
 
         if player_units_overlapping:
             # Remember the starting position of the drag and the item
@@ -238,6 +384,7 @@ def start_sim(player_units, enemy_units, chosen_map):
             pivot_cache = (x_pivot, y_pivot)
 
             cur_hero = player_units[canvas.drag_data['index']]
+            set_banner(cur_hero)
             moves, paths = get_possible_move_tiles(cur_hero)
 
             canvas.drag_data['moves'] = []
@@ -299,6 +446,13 @@ def start_sim(player_units, enemy_units, chosen_map):
             first_path = canvas.create_image(pivot_cache[0], pivot_cache[1], anchor=tk.NW, image=arrow_photos[14])
             canvas.tag_lower(first_path, item_id)
             canvas.drag_data['arrow_path'] = [first_path]
+
+        elif enemy_units_overlapping:
+            item_id = enemy_units_overlapping[0]
+            item_index = enemy_sprite_IDs.index(item_id)
+            cur_hero = enemy_units[item_index]
+            set_banner(cur_hero)
+            canvas.drag_data = None
 
         else:
             canvas.drag_data = None
@@ -475,7 +629,6 @@ def start_sim(player_units, enemy_units, chosen_map):
             for t in canvas.drag_data['arrow_path']:
                 canvas.tag_lower(t, canvas.drag_data['item'])
 
-
     def on_release(event):
         if canvas.drag_data is not None:
             x_comp = event.x // 90
@@ -509,6 +662,7 @@ def start_sim(player_units, enemy_units, chosen_map):
 
     # window
     window = ttk.Window(themename='darkly')
+    #window = ttk.Window()
     window.title('Fire Emblem Heroes Simulator')
     window.geometry('540x900') #tile size: 90x90
     window.iconbitmap(__location__ + "\\Sprites\\Marth.ico")
@@ -562,15 +716,47 @@ def start_sim(player_units, enemy_units, chosen_map):
         (436, 0, 505, 90)  # move_star
     ]
 
-    # Crop and append each region to arrow_sects
     for region in regions:
         cropped_image = arrows.crop(region)
         arrow_photos.append(ImageTk.PhotoImage(cropped_image))
 
-    # Now, arrow_sects contains all the cropped images
+    # hero hud
+    skills1 = Image.open(__location__ + "\\CombatSprites\\" + "Skill_Passive1" + ".png")
+    skill_photos = []
+    i = 0
+    j = 0
+    while i < 13:
+        while j < 13:
+            cropped_image = skills1.crop((74 * j, 74 * i, 74 * (j + 1), 74 * (i + 1)))
+            skill_photos.append(ImageTk.PhotoImage(cropped_image))
+            j += 1
+        i += 1
 
+    move_icons = []
+    status_pic = Image.open(__location__ + "\\CombatSprites\\" + "Status" + ".png")
 
+    inf_icon = status_pic.crop((350, 414, 406, 468))
+    inf_icon = inf_icon.resize((23, 23), Image.LANCZOS)
+    move_icons.append(ImageTk.PhotoImage(inf_icon))
+    cav_icon = status_pic.crop((462, 414, 518, 468))
+    cav_icon = cav_icon.resize((23, 23), Image.LANCZOS)
+    move_icons.append(ImageTk.PhotoImage(cav_icon))
+    fly_icon = status_pic.crop((518, 414, 572, 468))
+    fly_icon = fly_icon.resize((23, 23), Image.LANCZOS)
+    move_icons.append(ImageTk.PhotoImage(fly_icon))
+    arm_icon = status_pic.crop((406, 414, 462, 468))
+    arm_icon = arm_icon.resize((23, 23), Image.LANCZOS)
+    move_icons.append(ImageTk.PhotoImage(arm_icon))
 
+    weapon_icons = []
+    i = 0
+    while i < 24:
+        cur_icon = status_pic.crop((56 * i, 206, 56 * (i + 1), 260))
+        cur_icon = cur_icon.resize((25, 25), Image.LANCZOS)
+        weapon_icons.append(ImageTk.PhotoImage(cur_icon))
+        i += 1
+
+    #print(weapon_icons)
 
 
     # units
