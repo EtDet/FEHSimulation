@@ -10,8 +10,6 @@ SPD = 2
 DEF = 3
 RES = 4
 
-
-
 def move_letters(s, letter):
     if letter not in ['A', 'D']:
         return "Invalid letter"
@@ -30,31 +28,42 @@ def move_letters(s, letter):
 def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combatEffects):
 
     # Invalid Combat if one unit is dead
-    # Another case if attacker does not have weapon...?
-    if attacker.HPcur <= 0 or defender.HPcur <= 0 or attacker.getWeapon() == NIL_WEAPON: return (-1,-1)
+    # or if attacker does not have weapon
+    if attacker.HPcur <= 0 or defender.HPcur <= 0 or attacker.weapon is None: return (-1,-1)
 
+    # OK I gotta do some research on all cases of this
+    # Known cases: Hardy Bearing, Kvasir/NY!Kvasir
     attacker.unitCombatInitiates += 1
     defender.enemyCombatInitiates += 1
+
+    # Output arrays
+    atkAttackDamages = []
+    defAttackDamages = []
+
+    atkFEHDamage = 0
+    defFEHDamage = 0
 
     # lists of attacker/defender's skills & stats
     atkSkills = attacker.getSkills()
     atkStats = attacker.getStats()
     atkPhantomStats = [0] * 5
 
-    if "phantomSpd" in atkSkills: atkPhantomStats[2] += max(atkSkills["phantomSpd"] * 3 + 2, 10)
-
     defSkills = defender.getSkills()
     defStats = defender.getStats()
     defPhantomStats = [0] * 5
 
-    if "phantomSpd" in defSkills: defPhantomStats[2] += max(defSkills["phantomSpd"] * 3 + 2, 10)
+    if "phantomSpd" in atkSkills: atkPhantomStats[SPD] += max(atkSkills["phantomSpd"] * 3 + 2, 10)
+    if "phantomRes" in atkSkills: atkPhantomStats[RES] += max(atkSkills["phantomRes"] * 3 + 2, 10)
+    if "phantomSpd" in defSkills: defPhantomStats[SPD] += max(defSkills["phantomSpd"] * 3 + 2, 10)
+    if "phantomRes" in defSkills: defPhantomStats[RES] += max(defSkills["phantomRes"] * 3 + 2, 10)
 
+    # Now wouldn't that be amayzing -Matthew Vandham (2023)
     unit = [attacker, defender]
     stats = [atkStats, defStats]
     skills = [atkSkills, defSkills]
     phantomStats = [atkPhantomStats, defPhantomStats]
 
-    # stored combat buffs (death blow, swift sparrow, essentially everything)
+    # stored combat buffs (essentially everything)
     atkCombatBuffs = [0] * 5
     defCombatBuffs = [0] * 5
     combatBuffs = [atkCombatBuffs, defCombatBuffs]
@@ -70,16 +79,22 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkAllyWithin2Spaces = attacker.tile.unitsWithinNSpaces(2, True)
         atkAllyWithin3Spaces = attacker.tile.unitsWithinNSpaces(3, True)
         atkAllyWithin4Spaces = attacker.tile.unitsWithinNSpaces(4, True)
+        defAdjacentToAlly = defender.tile.unitsWithinNSpaces(1, True)
+        defAllyWithin2Spaces = defender.tile.unitsWithinNSpaces(2, True)
+        defAllyWithin3Spaces = defender.tile.unitsWithinNSpaces(3, True)
+        defAllyWithin4Spaces = defender.tile.unitsWithinNSpaces(4, True)
     else:
         atkAdjacentToAlly = 0
         atkAllyWithin2Spaces = 0
         atkAllyWithin3Spaces = 0
         atkAllyWithin4Spaces = 0
+        defAdjacentToAlly = 0
+        defAllyWithin2Spaces = 0
+        defAllyWithin3Spaces = 0
+        defAllyWithin4Spaces = 0
 
-    if isInSim:
-        atkFoeWithin2Spaces = attacker.tile.unitsWithinNSpaces(1, False)
-    else:
-        atkFoeWithin2Spaces = 0
+    if isInSim: atkFoeWithin2Spaces = attacker.tile.unitsWithinNSpaces(1, False)
+    else: atkFoeWithin2Spaces = 0
 
     atkInfAlliesWithin2Spaces = 0
     atkCavAlliesWithin2Spaces = 0
@@ -211,9 +226,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # null follow-up
     atkNullDefFU = False # prevent foe's guaranteed follow-ups
-    defNullAtkFU = False
-    atkDoSkillFU = False # prevent's foe's skills that disable follow-ups
-    defDoSkillFU = False
+    defNullAtkFU = False # prevent atkr's guaranteed follow-ups
+    atkDoSkillFU = False # disables foe's skills that disable follow-ups
+    defDoSkillFU = False # disables atkr's sskills that disable follow-ups
 
     # special cooldown charge boost (affected by heavy blade, guard, etc.)
     attackerGainWhenAttacking = 0
@@ -251,7 +266,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # true damage when attacking
     atkTrueDamage = 0
     defTrueDamage = 0
-    # LAMBDA THIS w/ finish skills
+    # needs to be per hit yaaaaaaaaaaaaay
+    atkTrueDamageArr = []
+    defTrueDamageArr = []
+
+    # finish skills
     atkFinishTrueDamage = 0
     defFinishTrueDamage = 0
 
@@ -282,7 +301,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkPostCombatHealing = 0
     defPostCombatHealing = 0
 
-    # mid-combat healing per hit, negated by deep wounds
+    # mid-combat healing per hit, fully negated by deep wounds
     atkMidCombatHeal = 0
     defMidCombatHeal = 0
     atkFinishMidCombatHeal = 0
@@ -504,8 +523,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "challenger" in atkSkills and atkAllyWithin2Spaces <= atkFoeWithin2Spaces: map(lambda x: x + 5, atkCombatBuffs)
     if "challenger" in defSkills and defNumAlliesWithin2Spaces <= defNumFoesWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
 
-    if "HPWarrior" in atkSkills and atkStats[0] >= defender.curHP + 1: map(lambda x: x + 4, atkCombatBuffs)
-    if "HPWarrior" in defSkills and defStats[0] >= attacker.curHP + 1: map(lambda x: x + 4, defCombatBuffs)
+    if "HPWarrior" in atkSkills and atkStats[0] >= defender.HPcur + 1: map(lambda x: x + 4, atkCombatBuffs)
+    if "HPWarrior" in defSkills and defStats[0] >= attacker.HPcur + 1: map(lambda x: x + 4, defCombatBuffs)
 
     if ("belovedZofia" in atkSkills and atkHPEqual100Percent) or "belovedZofia2" in atkSkills:
         map(lambda x: x + 4, atkCombatBuffs)
@@ -996,13 +1015,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills:
         atkSpPierceDR = True
-        if atkHPGreaterEqual25Percent:
-            map(lambda x:x+4, atkCombatBuffs)
+        if atkHPGreaterEqual25Percent: map(lambda x:x+4, atkCombatBuffs)
 
     if "HERE'S SOMETHING TO BELIEVE IN" in defSkills:
         defSpPierceDR = True
-        if defHPGreaterEqual25Percent:
-            map(lambda x:x+4, defCombatBuffs)
+        if defHPGreaterEqual25Percent: map(lambda x:x+4, defCombatBuffs)
 
     if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent:
         numFoesLeft = 0
@@ -1010,7 +1027,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[1] += 6
         atkCombatBuffs[3] += 6
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
-        if X <= numFoesWithin3Columns3Rows: braveATKR
+        if X <= numFoesWithin3Columns3Rows: braveATKR = True
 
     if "regalSunshade" in defSkills and defHPGreaterEqual25Percent:
         numFoesLeft = 0
@@ -1018,7 +1035,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] += 6
         defCombatBuffs[3] += 6
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
-        if X <= numFoesWithin3Columns3Rows: braveDEFR
+        if X <= numFoesWithin3Columns3Rows: braveDEFR = True
+
+    # Catherine: Thunderbrand
 
     if "thundabrand" in atkSkills and defHPGreaterEqual50Percent:
         atkCombatBuffs[1] += 5
@@ -1029,6 +1048,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] += 5
         defCombatBuffs[1] += 5
 
+    # Nemesis: Dark Creator S
     if "DCSIYKYK" in atkSkills:
         atkCombatBuffs[1] += 2 * atkNumAlliesHPGE90Percent
         atkCombatBuffs[3] += 2 * defNumAlliesHPGE90Percent
@@ -2434,6 +2454,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
         curRedu = reductions[spongebob][curAtk.attackNumSelf-1]
 
+        # this sucks
         strikeResult = attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick],
                checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], curRedu, miracles[patrick], trueDamages[spongebob], spTrueDamages[spongebob],
                heals[spongebob], deepWoundsAllowance[spongebob], dmgReduPierces[spongebob], dmgReduPierces[spongebob + 2], specialTriggers[spongebob],
@@ -2448,15 +2469,16 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if attacker.HPcur <= 0:
             attacker.HPcur = 0
             atkAlive = False
-            print(attacker.getName() + " falls.")
+            print(attacker.name + " falls.")
 
         if defender.HPcur <= 0:
             defender.HPcur = 0
             defAlive = False
-            print(defender.getName() + " falls.")
+            print(defender.name + " falls.")
 
         i += 1  # increment buddy!
 
+    # post combat healing/damage, should move to its own process
     if atkAlive and (atkSelfDmg != 0 or defOtherDmg != 0 or atkPostCombatHealing):
         resultDmg = ((atkSelfDmg + defOtherDmg) - atkPostCombatHealing * int(not(Status.DeepWounds in attacker.statusNeg)))
         attacker.HPcur -= resultDmg
@@ -2473,6 +2495,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if defender.HPcur < 1: defender.HPcur = 1
         if defender.HPcur > defStats[0]: defender.HPcur = defStats[0]
 
+    # post combat special incrementation, again move to seperate process
     if "specialSpiralW" in atkSkills and atkSpecialTriggered:
         atkPostCombatSpCharge += math.ceil(atkSkills["specialSpiralW"]/2)
 
@@ -2494,6 +2517,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if atkAlive: attacker.chargeSpecial(atkPostCombatSpCharge)
     if defAlive: defender.chargeSpecial(defPostCombatSpCharge)
 
+    # here ya go
     if atkAlive:
         for m in atkPostCombatStatusesApplied[0]:
             attacker.inflict(m)
@@ -2502,8 +2526,23 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         for n in defPostCombatStatusesApplied[0]:
             attacker.inflict(n)
 
+
     return attacker.HPcur, defender.HPcur
 
+# new combat function needs to return the following:
+# attack values for all attacks in combat, regardless of a unit's death
+# which attack finishes a unit
+# FEH Math calculation
+# special cooldowns after each attack
+# hashmap of post-combat effects
+# weapon triangle advantage
+# combat buffs
+
+# FEH Math
+# Atk - Def/Res + True Damage true for all hits
+
+# function should not deal damage to units/charge special/do post-combat things,
+# these will be handled by wherever after the combat function is called
 
 class Attack():
     def __init__(self, attackOwner, isFollowUp, isConsecutive, attackNumSelf, attackNumAll, prevAttack):
@@ -2535,8 +2574,6 @@ class EffectField():
 
 
 #flowerOfEaseField = EffectField(mirabilis, exRange1, exCondition, False, True, flowerofease_base)
-
-# maps are weighted graphs oh god
 
 # SPECIALS
 daylight = Special("Daylight", "Restores HP = 30% of damage dealt.", {"healSelf": 3}, 3, SpecialType.Offense)
