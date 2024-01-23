@@ -84,7 +84,7 @@ class Tile:
         within_n_tiles = self.tilesWithinNSpaces(n)
         counter = 0
         for x in within_n_tiles:
-            if x.hero_on.side == side and lookForSameSide or x.hero_on.side != side and not lookForSameSide: counter += 1
+            if x.hero_on is not None and (x.hero_on.side == side and lookForSameSide or x.hero_on.side != side and not lookForSameSide): counter += 1
         return counter
 
 

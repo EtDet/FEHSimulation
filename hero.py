@@ -310,12 +310,12 @@ class Hero:
         if slot == 0:
             self.weapon = skill
             self.skill_stat_mods[ATK] += skill.mt
+
+
         if slot == 1:
             self.assist = skill
         if slot == 2:
             self.special = skill
-            self.specialCount = skill.cooldown
-            self.specialMax = skill.cooldown
         if slot == 3:
             self.askill = skill
         if slot == 4:
@@ -339,10 +339,21 @@ class Hero:
             self.skill_stat_mods[SPD] += skill.effects["atkspdBoost"]
 
         if "spectrumBoost" in skill.effects:
-            self.skill_stat_mods[ATK] += skill.effects["sprectrumBoost"]
-            self.skill_stat_mods[SPD] += skill.effects["sprectrumBoost"]
-            self.skill_stat_mods[DEF] += skill.effects["sprectrumBoost"]
-            self.skill_stat_mods[RES] += skill.effects["sprectrumBoost"]
+            self.skill_stat_mods[ATK] += skill.effects["spectrumBoost"]
+            self.skill_stat_mods[SPD] += skill.effects["spectrumBoost"]
+            self.skill_stat_mods[DEF] += skill.effects["spectrumBoost"]
+            self.skill_stat_mods[RES] += skill.effects["spectrumBoost"]
+
+        if self.special is not None:
+            self.specialCount = skill.cooldown
+            self.specialMax = skill.cooldown
+
+            if self.weapon is not None and "slaying" in self.weapon.effects:
+                self.specialCount = max(self.specialCount - self.weapon.effects["slaying"], 1)
+                self.specialMax = max(self.specialMax - self.weapon.effects["slaying"], 1)
+        else:
+            self.specialCount = -1
+            self.specialMax = -1
 
         self.set_visible_stats()
 
@@ -667,6 +678,7 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
 weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
+special_sheet = pd.read_csv(__location__ + '\\FEHSpecials.csv')
 
 def makeHero(name):
     row = hero_sheet.loc[hero_sheet['IntName'] == name]
@@ -707,16 +719,42 @@ def makeWeapon(name):
     effects = {}
     users = []
 
-    if not isnan(row.loc[n, 'Effect1']) and not isnan(row.loc[n, 'Level1']): effects.update({row.loc[n, 'Effect1']: row.loc[n, 'Level1']})
-    if not isnan(row.loc[n, 'Effect2']) and not isnan(row.loc[n, 'Level2']): effects.update({row.loc[n, 'Effect2']: row.loc[n, 'Level2']})
-    if not isnan(row.loc[n, 'Effect3']) and not isnan(row.loc[n, 'Level3']): effects.update({row.loc[n, 'Effect3']: row.loc[n, 'Level3']})
-    if not isnan(row.loc[n, 'Effect4']) and not isnan(row.loc[n, 'Level4']): effects.update({row.loc[n, 'Effect4']: row.loc[n, 'Level4']})
-    if not isnan(row.loc[n, 'Effect5']) and not isnan(row.loc[n, 'Level5']): effects.update({row.loc[n, 'Effect5']: row.loc[n, 'Level5']})
 
-    if not isnan(row.loc[n, 'ExclusiveUser1']): users.append(row.loc[n, 'ExclusiveUser1'])
-    if not isnan(row.loc[n, 'ExclusiveUser2']): users.append(row.loc[n, 'ExclusiveUser2'])
-    if not isnan(row.loc[n, 'ExclusiveUser3']): users.append(row.loc[n, 'ExclusiveUser3'])
-    if not isnan(row.loc[n, 'ExclusiveUser4']): users.append(row.loc[n, 'ExclusiveUser4'])
+
+    if not pd.isna(row.loc[n, 'Effect1']) and not pd.isna(row.loc[n, 'Level1']): effects.update({row.loc[n, 'Effect1']: int(row.loc[n, 'Level1'])})
+    if not pd.isna(row.loc[n, 'Effect2']) and not pd.isna(row.loc[n, 'Level2']): effects.update({row.loc[n, 'Effect2']: int(row.loc[n, 'Level2'])})
+    if not pd.isna(row.loc[n, 'Effect3']) and not pd.isna(row.loc[n, 'Level3']): effects.update({row.loc[n, 'Effect3']: int(row.loc[n, 'Level3'])})
+    if not pd.isna(row.loc[n, 'Effect4']) and not pd.isna(row.loc[n, 'Level4']): effects.update({row.loc[n, 'Effect4']: int(row.loc[n, 'Level4'])})
+    if not pd.isna(row.loc[n, 'Effect5']) and not pd.isna(row.loc[n, 'Level5']): effects.update({row.loc[n, 'Effect5']: int(row.loc[n, 'Level5'])})
+
+    if not pd.isna(row.loc[n, 'ExclusiveUser1']): users.append(row.loc[n, 'ExclusiveUser1'])
+    if not pd.isna(row.loc[n, 'ExclusiveUser2']): users.append(row.loc[n, 'ExclusiveUser2'])
+    if not pd.isna(row.loc[n, 'ExclusiveUser3']): users.append(row.loc[n, 'ExclusiveUser3'])
+    if not pd.isna(row.loc[n, 'ExclusiveUser4']): users.append(row.loc[n, 'ExclusiveUser4'])
 
     return Weapon(name, int_name, desc, might, rng, wpnType, effects, users)
 
+def makeSpecial(name):
+    row = weapon_sheet.loc[special_sheet['Name'] == name]
+    n = row.index.values[0]
+
+    name = row.loc[n, 'Name']
+    desc = row.loc[n, 'Description']
+    cooldown = row.loc[n, 'Cooldown']
+    spType = row.loc[n, 'Type']
+    rng = row.loc[n, 'Range']
+    restrict_move = row.loc[n, 'RestrictedWeapons']
+    restrict_weapon = row.loc[n, 'RestrictedMovement']
+    effects = {}
+    users = []
+
+    if not pd.isna(row.loc[n, 'Effect1']) and not pd.isna(row.loc[n, 'Level1']): effects.update({row.loc[n, 'Effect1']: int(row.loc[n, 'Level1'])})
+    if not pd.isna(row.loc[n, 'Effect2']) and not pd.isna(row.loc[n, 'Level2']): effects.update({row.loc[n, 'Effect2']: int(row.loc[n, 'Level2'])})
+    if not pd.isna(row.loc[n, 'Effect3']) and not pd.isna(row.loc[n, 'Level3']): effects.update({row.loc[n, 'Effect3']: int(row.loc[n, 'Level3'])})
+    if not pd.isna(row.loc[n, 'Effect4']) and not pd.isna(row.loc[n, 'Level4']): effects.update({row.loc[n, 'Effect4']: int(row.loc[n, 'Level4'])})
+
+    if not pd.isna(row.loc[n, 'ExclusiveUser1']): users.append(row.loc[n, 'ExclusiveUser1'])
+    if not pd.isna(row.loc[n, 'ExclusiveUser2']): users.append(row.loc[n, 'ExclusiveUser2'])
+    if not pd.isna(row.loc[n, 'ExclusiveUser3']): users.append(row.loc[n, 'ExclusiveUser3'])
+
+    return Special(name, desc, effects, cooldown, spType)
