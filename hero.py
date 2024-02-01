@@ -3,7 +3,7 @@ from itertools import islice
 import random
 from enum import Enum
 import os
-import pandas as pd
+#import pandas as pd
 
 # CONSTANTS
 HP = 0
@@ -11,6 +11,15 @@ ATK = 1
 SPD = 2
 DEF = 3
 RES = 4
+
+WEAPON = 0
+ASSIST = 1
+SPECIAL = 2
+ASKILL = 3
+BSKILL = 4
+CSKILL = 5
+SSEAL = 6
+XSKILL = 7
 
 # return stat increase needed for level 1 -> 40
 def growth_to_increase(value, rarity):
@@ -135,6 +144,9 @@ class Hero:
         self.flowers = 0
         self.flower_limit = flower_limit
 
+        self.emblem = None
+        self.emblem_merges = 0
+
         self.allySupport = None
         self.summonerSupport = None
 
@@ -143,6 +155,7 @@ class Hero:
         self.pair_skill = None
 
         self.resp = False
+        self.has_resp = False
 
         self.combatsThisTurnUnity = 0
         self.combatsThurTurnEnemy = 0
@@ -311,19 +324,31 @@ class Hero:
             self.weapon = skill
             self.skill_stat_mods[ATK] += skill.mt
 
-
+        # Assist Skill
         if slot == 1:
             self.assist = skill
+
+        # Special Skill
         if slot == 2:
             self.special = skill
+
+        # A Skill
         if slot == 3:
             self.askill = skill
+
+        # B Skill
         if slot == 4:
             self.bskill = skill
+
+        # C Skill
         if slot == 5:
             self.cskill = skill
+
+        # Sacred Seal
         if slot == 6:
             self.sSeal = skill
+
+        # X Skill
         if slot == 7:
             self.xskill = skill
 
@@ -674,7 +699,7 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 #veyle.set_skill(obscurité, 0)
 
 #print(veyle.visible_stats)
-
+'''
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
 weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
@@ -758,3 +783,5 @@ def makeSpecial(name):
     if not pd.isna(row.loc[n, 'ExclusiveUser3']): users.append(row.loc[n, 'ExclusiveUser3'])
 
     return Special(name, desc, effects, cooldown, spType)
+
+'''

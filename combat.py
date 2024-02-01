@@ -249,6 +249,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkSpChargeBeforeFirstStrike = 0
     defSpChargeBeforeFirstStrike = 0
 
+    # GET RID
     atkHit1Reduction = 1 # how much the attacker's first hit is reduced by
     atkHit2Reduction = 1
     atkHit3Reduction = 1
@@ -261,7 +262,23 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # how much damage is reduced by (skills like Phys. Null Follow or Impenetrable Void)
     atkDmgReduFactor = 1 # atk causes def's hits to be reduced
-    defDmgReduFactor = 1 #
+    defDmgReduFactor = 1 #c
+
+    atkAllHitsRedu = []
+    atkFirstAttackRedu = []
+    atkFirstStrikesRedu = []
+    atkSecondStrikesRedu = []
+    atkConsecutiveRedu = []
+    atkSpReadyRedu = []
+    atkSpTriggeredNextRedu = []
+
+    defAllHitsRedu = []
+    defFirstAttackRedu = []
+    defFirstStrikesRedu = []
+    defSecondStrikesRedu = []
+    defConsecutiveRedu = []
+    defSpReadyRedu = []
+    defSpTriggeredNextRedu = []
 
     # pseudo-Miracle effects (refined Tyrfing)
     atkPseudoMiracleEnabled = False
@@ -2055,12 +2072,19 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # additional follow-up granted by outspeeding
     outspeedFactor = 5
+    atkPotentFU = False
+    defPotentFU = False
 
     if "FOR THE PRIDE OF BRODIA" in atkSkills: outspeedFactor += 20
     if "FOR THE PRIDE OF BRODIA" in defSkills: outspeedFactor += 20
 
-    if (atkStats[2] >= defStats[2] + outspeedFactor): atkSpdFollowUps += 1
+    if "potentFollow" in atkSkills and atkStats[SPD] >= defStats[SPD] + (outspeedFactor - 25):
+        atkPotentFU = True
 
+    if "potentFollow" in defSkills and defStats[SPD] >= atkStats[SPD] + (outspeedFactor - 25):
+        defPotentFU = True
+
+    if (atkStats[2] >= defStats[2] + outspeedFactor): atkSpdFollowUps += 1
     if (atkStats[2] + outspeedFactor <= defStats[2]): defSpdFollowUps += 1
 
     atkAlive = True
@@ -2451,8 +2475,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # PERFORM THE ATTACKS
 
     i = 0
-    while i < len(attackList):
-    #while i < len(attackList) and atkAlive and defAlive:
+    #while i < len(attackList):
+    while i < len(attackList) and (atkAlive and defAlive or isInSim):
         curAtk = attackList[i]
         if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkRecoilDmg > 0: atkSelfDmg += atkRecoilDmg
         if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and NEWatkOtherDmg > 0: atkOtherDmg += NEWatkOtherDmg
@@ -2766,19 +2790,33 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 #noah = Hero("Noah", 40, 42, 45, 35, 25, "Sword", 0, marthFalchion, luna, None, None, None)
 #mio = Hero("Mio", 38, 39, 47, 27, 29, "BDagger", 0, tacticalBolt, moonbow, None, None, None)
 
-player = makeHero("M!Alear")
-enemy = makeHero("Mirabilis")
+#player = makeHero("M!Alear")
+#enemy = makeHero("Mirabilis")
 
-player_weapon = makeWeapon("Resolute BladeEff")
-enemy_weapon = makeWeapon("Flower of Ease")
+#player_weapon = makeWeapon("Resolute BladeEff")
+#enemy_weapon = makeWeapon("Flower of Ease")
 
-player.set_skill(player_weapon, 0)
-enemy.set_skill(enemy_weapon, 0)
+player = Hero("Marth", "E!Marth", 0, "Sword", 0, [41, 45, 47, 33, 27], [50, 80, 90, 55, 40], 5, 165)
+enemy = Hero("Lucina", "B!Lucina", 0, "Lance", 0, [41, 34, 36, 27, 19], [50, 60, 60, 45, 35], 30, 165)
+
+player_weapon = Weapon("Hero-King Sword", "Hero-King Sword", "", 16, 1, "Sword", {"slaying": 1, "effDragon": 0}, {})
+enemy_weapon = Weapon("Iron Lance", "Iron Lance", "", 6, 1, "Lance", {}, {})
+
+player.set_skill(player_weapon, WEAPON)
+enemy.set_skill(enemy_weapon, WEAPON)
+
+# 50, 10
+# 60, 20
+# 70, 30
+# 80, 40
+potent1 = Skill("Potent 1", "", {"potentStrike": 1})
+
+player.set_skill(potent1, BSKILL)
 
 player.set_skill(glimmer, 2)
 enemy.set_skill(luna, 2)
 
-#print(simulate_combat(player, enemy, 0, 1, 2, []))
+print(simulate_combat(player, enemy, 0, 1, 2, []))
 
 # noah.addSpecialLines("\"I'm sorry, but you're in our way!\"",
 #                      "\"For the greater good!\"",
