@@ -2078,10 +2078,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "FOR THE PRIDE OF BRODIA" in atkSkills: outspeedFactor += 20
     if "FOR THE PRIDE OF BRODIA" in defSkills: outspeedFactor += 20
 
-    if "potentFollow" in atkSkills and atkStats[SPD] >= defStats[SPD] + (outspeedFactor - 25):
+    if "potentStrike" in atkSkills and atkStats[SPD] >= defStats[SPD] + (outspeedFactor - 25):
         atkPotentFU = True
 
-    if "potentFollow" in defSkills and defStats[SPD] >= atkStats[SPD] + (outspeedFactor - 25):
+    if "potentStrike" in defSkills and defStats[SPD] >= atkStats[SPD] + (outspeedFactor - 25):
         defPotentFU = True
 
     if (atkStats[2] >= defStats[2] + outspeedFactor): atkSpdFollowUps += 1
@@ -2187,6 +2187,16 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         else:
             newString += c
 
+    # potent strike
+    if atkPotentFU:
+        last_a_index = newString.rfind('A')
+        newString = newString[:last_a_index + 1] + 'A' + newString[last_a_index + 1:]
+
+    if defPotentFU:
+        last_a_index = newString.rfind('D')
+        newString = newString[:last_a_index + 1] + 'D' + newString[last_a_index + 1:]
+
+    # code don't work without these idk why
     startString = newString
     startString2 = startString
 
@@ -2201,12 +2211,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     while i < len(startString2):
         if startString2[i] == "A":
             A_Count += 1
-            isFollowUp = A_Count == 2 and followupA and not braveATKR or A_Count in [3, 4] and braveATKR
+            isFollowUp = A_Count == 2 and (followupA or atkPotentFU) and not braveATKR or A_Count in [3, 4, 5]
             isConsecutive = True if A_Count >= 2 and startString2[i - 1] == "A" else False
             attackList.append(Attack(0, isFollowUp, isConsecutive, A_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
         else:
             D_Count += 1
-            isFollowUp = D_Count == 2 and followupD and not braveDEFR or D_Count in [3, 4] and braveDEFR
+            isFollowUp = D_Count == 2 and (followupD or defPotentFU) and not braveDEFR or D_Count in [3, 4, 5]
             isConsecutive = True if D_Count >= 2 and startString2[i - 1] == "D" else False
             attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
         i += 1
@@ -2799,7 +2809,7 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 player = Hero("Marth", "E!Marth", 0, "Sword", 0, [41, 45, 47, 33, 27], [50, 80, 90, 55, 40], 5, 165)
 enemy = Hero("Lucina", "B!Lucina", 0, "Lance", 0, [41, 34, 36, 27, 19], [50, 60, 60, 45, 35], 30, 165)
 
-player_weapon = Weapon("Hero-King Sword", "Hero-King Sword", "", 16, 1, "Sword", {"slaying": 1, "effDragon": 0}, {})
+player_weapon = Weapon("Hero-King Sword", "Hero-King Sword", "", 1, 1, "Sword", {"slaying": 1, "effDragon": 0, "BraveAW": 0}, {})
 enemy_weapon = Weapon("Iron Lance", "Iron Lance", "", 6, 1, "Lance", {}, {})
 
 player.set_skill(player_weapon, WEAPON)
@@ -2810,11 +2820,13 @@ enemy.set_skill(enemy_weapon, WEAPON)
 # 70, 30
 # 80, 40
 potent1 = Skill("Potent 1", "", {"potentStrike": 1})
+defStance = Skill("Thing", "", {"defStance": 3})
 
 player.set_skill(potent1, BSKILL)
+enemy.set_skill(defStance, ASKILL)
 
-player.set_skill(glimmer, 2)
-enemy.set_skill(luna, 2)
+#player.set_skill(glimmer, 2)
+#enemy.set_skill(luna, 2)
 
 print(simulate_combat(player, enemy, 0, 1, 2, []))
 
