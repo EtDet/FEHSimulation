@@ -249,20 +249,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkSpChargeBeforeFirstStrike = 0
     defSpChargeBeforeFirstStrike = 0
 
-    # GET RID
-    atkHit1Reduction = 1 # how much the attacker's first hit is reduced by
-    atkHit2Reduction = 1
-    atkHit3Reduction = 1
-    atkHit4Reduction = 1
-
-    defHit1Reduction = 1 # how much the defender's first hit is reduced by
-    defHit2Reduction = 1
-    defHit3Reduction = 1
-    defHit4Reduction = 1
-
-    # how much damage is reduced by (skills like Phys. Null Follow or Impenetrable Void)
-    atkDmgReduFactor = 1 # atk causes def's hits to be reduced
-    defDmgReduFactor = 1 #c
+    # how much damage reduction is reduced by (skills like Phys. Null Follow or Impenetrable Void)
+    atkDRR = 1 # atkr causing defr's DR to be reduced
+    defDRR = 1 # defr causing atkr's DR to be reduced
 
     atkAllHitsRedu = []
     atkFirstAttackRedu = []
@@ -287,9 +276,13 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # true damage when attacking
     atkTrueDamage = 0
     defTrueDamage = 0
-    # needs to be per hit yaaaaaaaaaaaaay
+
+    # needs to be per hit yaaaaaaaaaaaaay NOT LIKE THIS
     atkTrueDamageArr = [0] * 4
     defTrueDamageArr = [0] * 4
+
+    atkTrueDamageFirstHit = 0
+    atkTrueDamageAllHit = 0
 
     # finish skills
     atkFinishTrueDamage = 0
@@ -407,12 +400,16 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "SEGAAAA" in atkSkills or "nintenesis" in atkSkills:
         map(lambda x: x + 5, atkCombatBuffs)
+        if atkTop3AllyBuffTotal >= 10:
+            atkNullDefFU, atkDoSkillFU = True
         if atkTop3AllyBuffTotal >= 25:
             atkCombatBuffs[1] += 5
             atkMidCombatHeal += 5
 
     if ("SEGAAAA" in defSkills or "nintenesis" in defSkills) and defAllyWithin2Spaces:
         map(lambda x: x + 5, defCombatBuffs)
+        if defTop3AllyBuffTotal >= 10:
+            defNullAtkFU, defDoSkillFU = True
         if defTop3AllyBuffTotal >= 25:
             defCombatBuffs[1] += 5
             defMidCombatHeal += 5 + 2 * ("nintenesis" in defSkills)
@@ -523,10 +520,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defPenaltiesNeutralized = [True] * 5
 
     if "Hello, I like money" in atkSkills:
-        map(lambda x: x + 4 + (2 * attacker.dragonflowers > 0), atkCombatBuffs)
+        map(lambda x: x + 4 + (2 * attacker.flowers > 0), atkCombatBuffs)
 
     if "Hello, I like money" in defSkills and defAllyWithin2Spaces:
-        map(lambda x: x + 4 + (2 * defender.dragonflowers > 0), defCombatBuffs)
+        map(lambda x: x + 4 + (2 * defender.flowers > 0), defCombatBuffs)
 
     if "doubleLion" in atkSkills and atkHPEqual100Percent: #refined eff alm
         braveATKR = True
@@ -536,8 +533,17 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "dracofalchion" in defSkills and defNumFoesWithin2Spaces >= defNumAlliesWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
     if "dracofalchionDos" in atkSkills: map(lambda x: x + 5, atkCombatBuffs)
     if "dracofalchionDos" in defSkills and defAllyWithin2Spaces: map(lambda x: x + 5, defCombatBuffs)
-    if "sweeeeeeep" in atkSkills and atkHPGreaterEqual25Percent: map(lambda x: x + 5, atkCombatBuffs)
-    if "sweeeeeeep" in defSkills and defHPGreaterEqual25Percent: map(lambda x: x + 5, defCombatBuffs)
+
+    if "sweeeeeeep" in atkSkills and atkHPGreaterEqual25Percent:
+        map(lambda x: x + 5, atkCombatBuffs)
+        if defender.getTargetedDef() == -1 and atkPhantomStats[2] > defPhantomStats[2]:
+            atkDoSkillFU = True
+            cannotCounter = True
+
+    if "sweeeeeeep" in defSkills and defHPGreaterEqual25Percent:
+        map(lambda x: x + 5, defCombatBuffs)
+        if attacker.getTargetedDef() == -1 and defPhantomStats[2] > atkPhantomStats[2]:
+            defDoSkillFU = True
 
     if "grayBoost" in atkSkills and atkHPGreaterEqual50Percent: map(lambda x: x + 3, atkCombatBuffs)
     if "grayBoost" in defSkills and defHPGreaterEqual50Percent: map(lambda x: x + 3, defCombatBuffs)
@@ -596,11 +602,13 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] -= 6
         defCombatBuffs[3] -= 6
         atkMidCombatHeal += 8
+        atkNullDefFU = True
 
     if "newVTyrfing" in defSkills:
         atkCombatBuffs[1] -= 6
         atkCombatBuffs[3] -= 6
         defMidCombatHeal += 8
+        defNullAtkFU = True
 
     if "NO MORE LOSSES" in atkSkills:
         defCombatBuffs[1] -= 5
@@ -741,12 +749,20 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "spectrumSolo" in defSkills and not defAdjacentToAlly:
         map(lambda x: x + 4, defCombatBuffs)
 
+    if "NFUSolo" in atkSkills and not atkAdjacentToAlly:
+        atkNullDefFU, atkDoSkillFU = True
+
+    if "NFUSolo" in defSkills and not defAdjacentToAlly:
+        defNullAtkFU, defDoSkillFU = True
+
     if "mareeeeta" in atkSkills and atkAdjacentToAlly <= 1:
         map(lambda x: x + 4, atkCombatBuffs)
+        atkNullDefFU, atkDoSkillFU = True
         defBonusesNeutralized[SPD], defBonusesNeutralized[DEF] = True
 
     if "mareeeeta" in defSkills and defAdjacentToAlly <= 1:
         map(lambda x: x + 4, defCombatBuffs)
+        defNullAtkFU, defDoSkillFU = True
         atkBonusesNeutralized[SPD], atkBonusesNeutralized[DEF] = True
 
     if "moreeeeta" in atkSkills and atkHPGreaterEqual25Percent:
@@ -759,10 +775,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "ascendingBlade" in atkSkills and atkHPGreaterEqual25Percent:
         map(lambda x: x + 5, atkCombatBuffs)
+        atkNullDefFU, atkDoSkillFU = True
         atkPostCombatSpCharge += 1
 
     if "ascendingBlade" in defSkills and defHPGreaterEqual25Percent:
         map(lambda x: x + 5, defCombatBuffs)
+        defNullAtkFU, defDoSkillFU = True
         defPostCombatSpCharge += 1
 
     if "ROY'S OUR BOY" in atkSkills and atkHPGreaterEqual25Percent:
@@ -842,6 +860,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "Barry B. Benson" in atkSkills and defHPGreaterEqual75Percent:
         atkCombatBuffs[1] += 5
         atkCombatBuffs[2] += 5
+        atkNullDefFU, atkDoSkillFU = True
 
     if "bonusInheritor" in atkSkills: #eirika, should be highest bonus for each given stat on allies within 2 spaces
         atkCombatBuffs[1] += 0
@@ -927,8 +946,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # yeah we'll be here for a while
     if "You get NOTHING" in atkSkills:
-        atkDoSkillFU = 0
-        atkNullDefFU = 0
+        atkNullDefFU, atkDoSkillFU = True
         defDoSkillFU = 0
         defNullAtkFU = 0
         atkSpecialDisabled = True
@@ -940,8 +958,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if atkHPGreaterEqual25Percent: map(lambda x: x + 5, atkCombatBuffs)
 
     if "You get NOTHING" in defSkills:
-        atkDoSkillFU = 0
-        atkNullDefFU = 0
+        atkNullDefFU, atkDoSkillFU = True
         defDoSkillFU = 0
         defNullAtkFU = 0
         atkSpecialDisabled = True
@@ -999,6 +1016,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "waitTurns" in atkSkills: #ryoma
         map(lambda x:x+4, atkCombatBuffs)
+        atkNullDefFU, atkDoSkillFU = True
+
+    if "waitTurns" in defSkills and defAllyWithin2Spaces:
+        map(lambda x: x + 4, defCombatBuffs)
+        defNullAtkFU, defDoSkillFU = True
 
     if "xanderific" in atkSkills and defHPGreaterEqual75Percent:
         defCombatBuffs[1] -= 5
@@ -1069,10 +1091,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[1] += 5
         atkCombatBuffs[2] += 5
         desperateA = True
+        atkDoSkillFU = True
 
     if "thundabrand" in defSkills and atkHPGreaterEqual50Percent:
         defCombatBuffs[1] += 5
         defCombatBuffs[1] += 5
+        defDoSkillFU = True
 
     # Nemesis: Dark Creator S
     if "DCSIYKYK" in atkSkills:
@@ -1141,7 +1165,13 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
 
-    if "niuBoost" in atkSkills and atkHPGreaterEqual25Percent: map(lambda x: x + 4, atkCombatBuffs)
+    if "niuBoost" in atkSkills and atkHPGreaterEqual25Percent:
+        map(lambda x: x + 4, atkCombatBuffs)
+        atkNullDefFU, atkDoSkillFU = True
+
+    if "niuBoost" in defSkills and defHPGreaterEqual25Percent:
+        defNullAtkFU, defDoSkillFU = True
+        map(lambda x: x + 4, defCombatBuffs)
 
     if "ICE UPON YOU" in atkSkills and defHasPenalty:
         atkSkillFollowUps += 1
@@ -1369,6 +1399,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "Barry B. Benson" in defSkills and atkHPGreaterEqual75Percent:
         defCombatBuffs[1] += 5
         defCombatBuffs[2] += 5
+        defNullAtkFU, defDoSkillFU = True
 
     if "bonusInheritor" in defSkills: #eirika, should be highest bonus for each given stat on allies within 2 spaces
         defCombatBuffs[1] += 0
@@ -1408,8 +1439,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "amatsuDC" in defSkills and defHPGreaterEqual50Percent:
         ignoreRng = True
 
-    if "waitTurns" in defSkills and defAllyWithin2Spaces:
-        map(lambda x: x + 4, defCombatBuffs)
+
 
     if "xanderific" in defSkills and atkHPGreaterEqual75Percent:
         atkCombatBuffs[1] -= 5
@@ -1429,7 +1459,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
 
-    if "niuBoost" in defSkills and defHPGreaterEqual25Percent: map(lambda x: x + 4, defCombatBuffs)
+
 
     if "triAdeptS" in defSkills and defSkills["triAdeptS"] > triAdept: triAdept = defSkills["triAdeptS"]
     if "triAdeptW" in defSkills and defSkills["triAdeptW"] > triAdept: triAdept = defSkills["triAdeptW"]
@@ -1667,20 +1697,30 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         attackerLossWhenAttacked -= 1
         attackerLossWhenAttacking -= 1
 
-    if "shez!" in atkSkills and atkHPCur / atkStats[0] >= 0.2:
-        attackerGainWhenAttacking += 1
-        attackerGainWhenAttacked += 1
+    # M!Shez - Crimson Blades - Base
+    # Grants Spd+5. Inflicts Def/Res-5. Unit attacks twice.
+    # At start of combat, grants the following based on unit's HP:
+    #  - if ≥ 20%, grants Special cooldown charge +1 to unit per attack
+    #  - if ≥ 40%, reduces damage from first attack during combat by 40%
+    if "shez!" in atkSkills:
+        if atkHPCur / atkStats[0] >= 0.2:
+            attackerGainWhenAttacking += 1
+            attackerGainWhenAttacked += 1
+        if atkHPCur / atkStats[0] >= 0.4:
+            defFirstAttackRedu.append(40)
 
-    if "shez!" in defSkills and defHPCur / defStats[0] >= 0.2:
-        defenderGainWhenAttacking += 1
-        defenderGainWhenAttacked += 1
+    if "shez!" in defSkills:
+        if defHPCur / defStats[0] >= 0.2:
+            defenderGainWhenAttacking += 1
+            defenderGainWhenAttacked += 1
+        if defHPCur / defStats[0] >= 0.4:
+            atkFirstAttackRedu.append(40)
 
     if "BY MISSILETAINN!!!" in atkSkills:
         attackerGainWhenAttacked += 1
 
     if "BY MISSILETAINN!!!" in defSkills:
         defenderGainWhenAttacked += 1
-
 
     if "flashingBlade" in atkSkills and atkPhantomStats[2] > defPhantomStats[2] + max(-2 * atkSkills["flashingBlade"] + 7, 1):
         attackerGainWhenAttacking += 1
@@ -1730,12 +1770,15 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defenderGainWhenAttacked = 0
         attackerLossWhenAttacking = 0
         attackerLossWhenAttacked = 0
+        atkNullDefFU, atkDoSkillFU = True
+
 
     if "up b side b" in defSkills or "up b bair" in defSkills:
         attackerGainWhenAttacking = 0
         attackerGainWhenAttacked = 0
         defenderLossWhenAttacking = 0
         defenderLossWhenAttacked = 0
+        defNullAtkFU, defDoSkillFU = True
 
     if "nintenesis" in atkSkills and atkTop3AllyBuffTotal >= 10:
         attackerLossWhenAttacked = 0
@@ -1745,13 +1788,13 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defenderLossWhenAttacked = 0
         defenderLossWhenAttacking = 0
 
-    if "Hello, I like money" in atkSkills and attacker.dragonflowers > 1:
+    if "Hello, I like money" in atkSkills and attacker.flowers > 1:
         defenderGainWhenAttacking = 0
         defenderGainWhenAttacked = 0
         attackerLossWhenAttacking = 0
         attackerLossWhenAttacked = 0
 
-    if "Hello, I like money" in defSkills and defAllyWithin2Spaces and defender.dragonflowers > 1:
+    if "Hello, I like money" in defSkills and defAllyWithin2Spaces and defender.flowers > 1:
         attackerGainWhenAttacking = 0
         attackerGainWhenAttacked = 0
         defenderLossWhenAttacking = 0
@@ -1779,8 +1822,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     #defenderGainWhenAttacking = min(max(defenderGainWhenAttacking, -1), 1)
     #defenderGainWhenAttacked = min(max(defenderGainWhenAttacked, -1), 1)
 
-    # WINDSWEEP PLEASE GET RID OF THAT WINDSWEEP CHECK THING IT SUCKS
-
     if "windsweep" in atkSkills:
         atkSkillFollowUpDenials -= 1
         if atkPhantomStats[2] > defPhantomStats[2] + (-2 * atkSkills["windsweep"] + 7) and defender.getTargetedDef() == -1:
@@ -1790,109 +1831,17 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "brashAssault" in atkSkills and (cannotCounter or not(attacker.getRange() == defender.getRange() or ignoreRng)) and atkHPCur / atkStats[0] <= 0.1 * atkSkills["brashAssault"] + 0.2:
         atkSkillFollowUps += 1
 
+    # NFU
     if Status.NullFollowUp in attacker.statusPos and atkPhantomStats[2] > defPhantomStats[2]:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
+        atkNullDefFU, atkDoSkillFU = True
 
     if Status.NullFollowUp in defender.statusPos and defPhantomStats[2] > atkPhantomStats[2]:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
+        defNullAtkFU, defDoSkillFU = True
 
     if atkNullDefFU: defSkillFollowUps = 0
     if defNullAtkFU: atkSkillFollowUps = 0
     if atkDoSkillFU: atkSkillFollowUpDenials = 0
     if defDoSkillFU: defSkillFollowUpDenials = 0
-
-    # MOVE TO STAT AREA
-
-    if "Barry B. Benson" in atkSkills and defHPGreaterEqual75Percent:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "Barry B. Benson" in defSkills and atkHPGreaterEqual75Percent:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "sweeeeeeep" in atkSkills and atkHPGreaterEqual25Percent and \
-        defender.wpnType not in ["RTome", "BTome", "GTome", "CTome", "RDragon", "BDragon", "GDragon", "CDragon", "Staff"]\
-        and atkPhantomStats[2] > defPhantomStats[2]:
-        atkSkillFollowUpDenials = 0
-        cannotCounter = True
-
-    if "sweeeeeeep" in defSkills and defHPGreaterEqual25Percent and \
-        attacker.wpnType not in ["RTome", "BTome", "GTome", "CTome", "RDragon", "BDragon", "GDragon", "CDragon", "Staff"]\
-        and defPhantomStats[2] > atkPhantomStats[2]:
-        defSkillFollowUpDenials = 0
-
-    if "waitTurns" in atkSkills:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "waitTurns" in defSkills and defAllyWithin2Spaces:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "niuBoost" in atkSkills and atkHPGreaterEqual25Percent:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "niuBoost" in defSkills and defHPGreaterEqual25Percent:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "ascendingBlade" in atkSkills and atkHPGreaterEqual25Percent:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "ascendingBlade" in defSkills and defHPGreaterEqual25Percent:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "up b side b" or "up b bair" in atkSkills:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "up b side b" or "up b bair" in defSkills:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "thundabrand" in atkSkills and defHPGreaterEqual50Percent:
-        atkSkillFollowUpDenials = 0
-
-    if "thundabrand" in defSkills and atkHPGreaterEqual50Percent:
-        defSkillFollowUpDenials = 0
-
-    if ("SEGAAAA" in atkSkills or "nintenesis" in atkSkills) and atkTop3AllyBuffTotal >= 10:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if ("SEGAAAA" in defSkills or "nintenesis" in defSkills) and defAllyWithin2Spaces and defTop3AllyBuffTotal >= 10:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "NFUSolo" in atkSkills and not atkAdjacentToAlly:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "NFUSolo" in defSkills and not defAdjacentToAlly:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "mareeeeta" in atkSkills and atkAdjacentToAlly <= 1:
-        atkSkillFollowUpDenials = 0
-        defSkillFollowUps = 0
-
-    if "mareeeeta" in defSkills and defAdjacentToAlly <= 1:
-        defSkillFollowUpDenials = 0
-        atkSkillFollowUps = 0
-
-    if "newVTyrfing" in atkSkills and (not atkHPEqual100Percent or defHPGreaterEqual75Percent):
-        atkSkillFollowUpDenials = 0
-
-    if "newVTyrfing" in defSkills:
-        defSkillFollowUpDenials = 0
-
-    # MOVE TO STAT AREA FOR EACH WEAPON
 
     # atkTrueDamageArr = list(map(lambda x: x + 5, atkTrueDamageArr))
     # defTrueDamageArr = list(map(lambda x: x + 5, defTrueDamageArr))
@@ -2074,6 +2023,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     outspeedFactor = 5
     atkPotentFU = False
     defPotentFU = False
+    atkPotentIndex = -1
+    defPotentIndex = -1
 
     if "FOR THE PRIDE OF BRODIA" in atkSkills: outspeedFactor += 20
     if "FOR THE PRIDE OF BRODIA" in defSkills: outspeedFactor += 20
@@ -2196,7 +2147,13 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         last_a_index = newString.rfind('D')
         newString = newString[:last_a_index + 1] + 'D' + newString[last_a_index + 1:]
 
-    # code don't work without these idk why
+        defPotentIndex = newString.rfind('D')
+
+    if atkPotentFU:
+        atkPotentIndex = newString.rfind('A')
+
+
+    # code don't work without these
     startString = newString
     startString2 = startString
 
@@ -2213,171 +2170,149 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             A_Count += 1
             isFollowUp = A_Count == 2 and (followupA or atkPotentFU) and not braveATKR or A_Count in [3, 4, 5]
             isConsecutive = True if A_Count >= 2 and startString2[i - 1] == "A" else False
-            attackList.append(Attack(0, isFollowUp, isConsecutive, A_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
+            potentRedu = 100
+            if "potentStrike" in atkSkills and i == atkPotentIndex:
+                potentRedu = 10 * atkSkills["potentStrike"] + 40 * int(not (braveATKR or followupA))
+            attackList.append(Attack(0, isFollowUp, isConsecutive, A_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1], potentRedu))
         else:
             D_Count += 1
             isFollowUp = D_Count == 2 and (followupD or defPotentFU) and not braveDEFR or D_Count in [3, 4, 5]
             isConsecutive = True if D_Count >= 2 and startString2[i - 1] == "D" else False
-            attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1]))
+            potentRedu = 100
+            if "potentStrike" in defSkills and i == defPotentIndex:
+                potentRedu = 10 * atkSkills["potentStrike"] + 40 * int(not (braveDEFR or followupD))
+            attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1], potentRedu))
         i += 1
 
     # Damage reduction per hit
     # Computed here due to attack order/damage reduction reduction needing to be computed first
 
-    # M!Shez - Crimson Blades - Base
-    if "shez!" in atkSkills and atkHPCur / atkStats[0] >= 0.4: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
-    if "shez!" in defSkills and defHPCur / atkStats[0] >= 0.4: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
-
     # Ituski - Mirage Falchion - Refined Eff
-    if "Nintendo has forgotten about Mario…" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
-    if "Nintendo has forgotten about Mario…" in defSkills and defAllyWithin2Spaces: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
+    # If unit initiates combat or is within 2 spaces of an ally:
+    #  - grants Atk/Spd/Def/Res+4 to unit
+    #  - unit makes a guaranteed follow-up attack
+    #  - reduces damage from first attack during combat by 30%
+    if "Nintendo has forgotten about Mario…" in atkSkills:
+        defFirstAttackRedu.append(30)
+
+    if "Nintendo has forgotten about Mario…" in defSkills and defAllyWithin2Spaces:
+        atkFirstAttackRedu.append(30)
 
     # Byleth - Creator Sword - Refined Eff
-    if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills and atkHPGreaterEqual25Percent: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
-    if "HERE'S SOMETHING TO BELIEVE IN" in defSkills and defHPGreaterEqual25Percent: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
+    if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills and atkHPGreaterEqual25Percent:
+        defFirstAttackRedu.append(30)
+    if "HERE'S SOMETHING TO BELIEVE IN" in defSkills and defHPGreaterEqual25Percent:
+        atkFirstAttackRedu.append(30)
 
     # SU!Edelgard - Regal Sunshade - Base
-    if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent: defHit1Reduction *= 1 - (0.4 * defDmgReduFactor)
-    if "regalSunshade" in defSkills and defHPGreaterEqual25Percent: atkHit1Reduction *= 1 - (0.4 * atkDmgReduFactor)
+    if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent:
+        defFirstAttackRedu.append(40)
+    if "regalSunshade" in defSkills and defHPGreaterEqual25Percent:
+        atkFirstAttackRedu.append(40)
 
     # CH!Ike - Sturdy War Sword - Base
     if "sturdyWarrr" in atkSkills and atkHPGreaterEqual25Percent and attacker.getSpecialType() == "Offense" and atkAllyWithin4Spaces >= 2:
-        defHit1Reduction *= 1 - (0.1 * attacker.getMaxSpecialCooldown() * defDmgReduFactor)
+        defFirstAttackRedu.append(10 * attacker.getMaxSpecialCooldown())
     if "sturdyWarrr" in defSkills and defHPGreaterEqual25Percent and defender.getSpecialType() == "Offense" and defAllyWithin4Spaces >= 2:
-        atkHit1Reduction *= 1 - (0.1 * defender.getMaxSpecialCooldown() * atkDmgReduFactor)
+        atkFirstAttackRedu.append(10 * defender.getMaxSpecialCooldown())
 
     # Reginn - Lyngheiðr - Base
-    if "reginn :)" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
+    if "reginn :)" in atkSkills:
+        defFirstAttackRedu.append(30)
 
     # Seliph/Sigurd - Divine Tyrfing - Base
-    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:defHit1Reduction *= 1 - (defDmgReduFactor * 0.5)
-    if ("divTyrfing" in defSkills or "refDivTyrfing" in defSkills) and attacker.wpnType in ["RTome", "BTome", "GTome", "CTome"]:atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.5)
+    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
+        defFirstAttackRedu.append(50)
+    if ("divTyrfing" in defSkills or "refDivTyrfing" in defSkills) and attacker.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
+        atkFirstAttackRedu.append(50)
 
     # L!Seliph - Virtuous Tyrfing - Refined Eff
     if "NO MORE LOSSES" in atkSkills:
         if defender.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
-            defHit1Reduction *= 1 - (defDmgReduFactor * 0.8)
-            defHit2Reduction *= 1 - (defDmgReduFactor * 0.8)
-            defHit3Reduction *= 1 - (defDmgReduFactor * 0.8)
-            defHit4Reduction *= 1 - (defDmgReduFactor * 0.8)
+            defAllHitsRedu.append(80)
         else:
-            defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
-            defHit2Reduction *= 1 - (defDmgReduFactor * 0.4)
-            defHit3Reduction *= 1 - (defDmgReduFactor * 0.4)
-            defHit4Reduction *= 1 - (defDmgReduFactor * 0.4)
+            defAllHitsRedu.append(40)
 
     if "NO MORE LOSSES" in defSkills and defAllyWithin3Spaces:
         if attacker.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
-            atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.8)
-            atkHit2Reduction *= 1 - (atkDmgReduFactor * 0.8)
-            atkHit3Reduction *= 1 - (atkDmgReduFactor * 0.8)
-            atkHit4Reduction *= 1 - (atkDmgReduFactor * 0.8)
+            atkAllHitsRedu.append(80)
         else:
-            atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
-            atkHit2Reduction *= 1 - (atkDmgReduFactor * 0.4)
-            atkHit3Reduction *= 1 - (atkDmgReduFactor * 0.4)
-            atkHit4Reduction *= 1 - (atkDmgReduFactor * 0.4)
+            atkAllHitsRedu.append(40)
 
-    if "gregorSword!" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
-    if "gregorSword!" in defSkills and defAllyWithin2Spaces: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
+    if "gregorSword!" in atkSkills:
+        defFirstAttackRedu.append(40)
+    if "gregorSword!" in defSkills and defAllyWithin2Spaces:
+        atkFirstAttackRedu.append(40)
 
     # L!Sigurd - Hallowed Tyrfing - Base
-    if "WaitIsHeAGhost" in atkSkills: defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
-    if "WaitIsHeAGhost" in defSkills and defender.getRange() == 2: atkHit4Reduction *= 1 - (atkDmgReduFactor * 0.4)
+    if "WaitIsHeAGhost" in atkSkills:
+        defFirstAttackRedu.append(40)
+    if "WaitIsHeAGhost" in defSkills and defender.getRange() == 2:
+        atkFirstAttackRedu.append(40)
 
     # B!Marth
     if "denesis" in atkSkills and atkHPGreaterEqual25Percent:
-        defHit1Reduction *= 1 - (defDmgReduFactor * 0.4)
-        if braveDEFR:
-            defHit2Reduction *= 1 - (defDmgReduFactor * 0.4)
+        defFirstStrikesRedu.append(40)
 
     if "denesis" in defSkills and defHPGreaterEqual25Percent:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.4)
-        if braveATKR:
-            atkHit2Reduction *= 1 - (atkDmgReduFactor * 0.4)
+        atkFirstStrikesRedu.append(40)
 
     # Ayra
-    if "Ayragate" in atkSkills and defHPGreaterEqual75Percent: defHit1Reduction *= 1 - (defDmgReduFactor * 0.2)
-    if "Ayragate" in defSkills and atkHPGreaterEqual25Percent: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.2)
+    if "Ayragate" in atkSkills and defHPGreaterEqual75Percent:
+        defFirstAttackRedu.append(20)
+    if "Ayragate" in defSkills and atkHPGreaterEqual25Percent:
+        atkFirstAttackRedu.append(20)
 
     # Kempf
-    if "MY TRAP! 🇺🇸" in atkSkills and atkAdjacentToAlly <= 1: defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
-    if "MY TRAP! 🇺🇸" in defSkills and defAdjacentToAlly <= 1: atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
+    if "MY TRAP! 🇺🇸" in atkSkills and atkAdjacentToAlly <= 1:
+        defFirstAttackRedu.append(30)
+    if "MY TRAP! 🇺🇸" in defSkills and defAdjacentToAlly <= 1:
+        atkFirstAttackRedu.append(30)
 
     # uhhhhhhh
     if "Just Lean" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
-        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
     if "Just Lean" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
     # Rutger - Wanderer Blade - Refined Eff
     if "like the university" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
-        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
     if "like the university" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
     if "BONDS OF FIIIIRE, CONNECT US" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
-        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
     if "BONDS OF FIIIIRE, CONNECT US" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
     if "LOVE PROVIIIIDES, PROTECTS US" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
-        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
-        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - defPhantomStats[2]), 0.4))
+        defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
     if "LOVE PROVIIIIDES, PROTECTS US" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
     # Dodge Status
     if Status.Dodge in atkSkills and atkPhantomStats[2] > defPhantomStats[2]:
-        defHit1Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        defHit2Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        defHit3Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        defHit4Reduction *= 1 - (defDmgReduFactor * min(0.04 * (atkPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
     if Status.Dodge in defSkills and defPhantomStats[2] > atkPhantomStats[2]:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit2Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit3Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
-        atkHit4Reduction *= 1 - (atkDmgReduFactor * min(0.04 * (defPhantomStats[2] - atkPhantomStats[2]), 0.4))
+        atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
     if "reduFU" in atkSkills and turn % 2 == 1 or not defHPEqual100Percent:
-        defHit1Reduction *= 1 - (defDmgReduFactor * 0.3 * (1 + int(followupD)))
+        defFirstAttackRedu.append(30 * (1 + int(followupD)))
 
     if "reduFU" in defSkills and turn % 2 == 1 or not atkHPEqual100Percent:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3 * (1 + int(followupA)))
+        atkFirstAttackRedu.append(30 * (1 + int(followupA)))
 
     if "ow" in atkSkills and atkHPGreaterEqual25Percent:
-        defHit1Reduction *= 1 - (defDmgReduFactor * 0.3)
+        defFirstAttackRedu.append(30)
 
     if "ow" in defSkills and defHPGreaterEqual25Percent:
-        atkHit1Reduction *= 1 - (atkDmgReduFactor * 0.3)
+        atkFirstAttackRedu.append(30)
 
     # Change these to be introduced before, should be True if AOE special triggers (actually should it?)
     atkSpecialTriggered = False
@@ -2394,7 +2329,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # yeah that's a lot of stuff to consider, I swear I need it
     def attack(striker, strikee, stkSpEffects, steSpEffects, stkStats, steStats, defOrRes, strSpMod, steSpMod,
                curReduction, curMiracle, trueDmg, curTrueDmg, curSpTrueDmg, curHeal, curDWA, spPierce, alwPierce, curTriggered,
-               stkDisabledSpecial, steDisabledSpecial, stkHPCur, steHPCur, stkSpCount, steSpCount):
+               stkDisabledSpecial, steDisabledSpecial, stkHPCur, steHPCur, stkSpCount, steSpCount, curDRR, potentRedu):
 
         stkSpecialTriggered = False
         steSpecialTriggered = False
@@ -2402,40 +2337,52 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
         if stkSpCount == 0 and striker.getSpecialType() == "Offense" and not stkDisabledSpecial:
             if not isInSim: print(striker.getName() + " procs " + striker.getSpName() + ".")
-            #print(striker.getSpecialLine())
             dmgBoost = getSpecialHitDamage(stkSpEffects, stkStats, steStats, defOrRes) + curSpTrueDmg(min(stkStats[0] - stkHPCur, 30)) # owain :)
             stkSpecialTriggered = True
 
+        # attack minus defense or resistance
         attack = stkStats[1] - steStats[3 + defOrRes]
 
         if attack < 0: attack = 0
-        attack += trueDmg
-        attack += dmgBoost
-        attack += curTrueDmg(stkSpCount == 0 or curTriggered)
-        if striker.getSpecialType() == "Staff": attack = math.trunc(attack * 0.5)
-        curReduction = curReduction * (not(stkSpecialTriggered and spPierce) and not(alwPierce))
-        attack = math.ceil(attack * curReduction)
+        attack += trueDmg # true damage by skills
+        attack += dmgBoost # true damage by specials
+        attack += curTrueDmg(stkSpCount == 0 or curTriggered) # special-enabled true damage
 
+        # half damage if staff user without wrathful staff
+        if striker.getSpecialType() == "Staff": attack = math.trunc(attack * 0.5)
+
+        # potent FU reduction
+        attack = trunc(attack * potentRedu/100)
+
+        # damage reduction
+        total_reduction = 1
+        if not alwPierce and not(stkSpecialTriggered and spPierce):
+            for x in curReduction:
+                total_reduction *= 1 - (x/100 * curDRR) # change by redu factor
+
+        # defensive specials
         if steSpCount == 0 and strikee.getSpecialType() == "Defense" and not steDisabledSpecial:
             if striker.getRange() == 1 and "closeShield" in steSpEffects:
                 if not isInSim: print(strikee.getName() + " procs " + strikee.getSpName() + ".")
-                #print(strikee.getSpecialLine())
-                attack -= math.trunc(attack * 0.10 * steSpEffects["closeShield"])
-                steSpecialTriggered = True
+                total_reduction *= 1 - (0.10 * steSpEffects["closeShield"])
             elif striker.getRange() == 2 and "distantShield" in steSpEffects:
                 if not isInSim: print(strikee.getName() + " procs " + strikee.getSpName() + ".")
-                #print(strikee.getSpecialLine())
-                attack -= math.trunc(attack * 0.10 * steSpEffects["distantShield"])
-                steSpecialTriggered = True
+                total_reduction *= 1 - (0.10 * steSpEffects["distantShield"])
 
+            steSpecialTriggered = True
+
+        # final rounded attack damage
+        attack = math.ceil(attack * total_reduction)
+
+        # non-special Miracle
         curMiracleTriggered = False
         if curMiracle and steHPCur - attack < 1 and steHPCur != 1:
             attack = steHPCur - 1
             curMiracleTriggered = True
 
+        # special Miracle
         if steSpCount == 0 and "miracleSP" in steSpEffects and steHPCur - attack < 1 and steHPCur != 1 and not curMiracle:
             if not isInSim: print(strikee.getName() + " procs " + strikee.getSpName() + ".")
-            #print(strikee.getSpecialLine())
             attack = steHPCur - 1
             steSpecialTriggered = True
 
@@ -2455,6 +2402,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
         if stkSpecialTriggered: stkSpCount = striker.specialMax
         if steSpecialTriggered: steSpCount = striker.specialMax
+
+        # healing
 
         totalHealedAmount = 0
 
@@ -2488,11 +2437,14 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     #while i < len(attackList):
     while i < len(attackList) and (atkAlive and defAlive or isInSim):
         curAtk = attackList[i]
+
+        # recoil damage
         if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and atkRecoilDmg > 0: atkSelfDmg += atkRecoilDmg
         if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1 and NEWatkOtherDmg > 0: atkOtherDmg += NEWatkOtherDmg
         if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and defRecoilDmg > 0: defSelfDmg += defRecoilDmg
         if curAtk.attackOwner == 1 and curAtk.attackNumSelf == 1 and NEWdefOtherDmg > 0: defOtherDmg += NEWdefOtherDmg
 
+        # post-combat status effects
         if curAtk.attackOwner == 0 and curAtk.attackNumSelf == 1:
             atkPostCombatStatusesApplied[0] = atkPostCombatStatusesApplied[0] + atkPostCombatStatusesApplied[1]
             defPostCombatStatusesApplied[0] = defPostCombatStatusesApplied[0] + defPostCombatStatusesApplied[2]
@@ -2505,13 +2457,47 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
             defender.chargeSpecial(defSpChargeBeforeFirstStrike)
 
+        # damage reductions
+        damage_reductions = []
+
+        if curAtk.attackOwner == 0:
+            damage_reductions += atkAllHitsRedu
+            if curAtk.attackNumSelf == 1:
+                damage_reductions += atkFirstAttackRedu
+                damage_reductions += atkFirstStrikesRedu
+            if curAtk.attackNumSelf == 2:
+                if braveATKR:
+                    damage_reductions += atkFirstStrikesRedu
+                else:
+                    damage_reductions += atkSecondStrikesRedu
+            if curAtk.attackNumSelf >= 3:
+                damage_reductions += atkSecondStrikesRedu
+            if curAtk.isConsecutive:
+                damage_reductions += atkConsecutiveRedu
+
+        if curAtk.attackOwner == 1:
+            damage_reductions += defAllHitsRedu
+            if curAtk.attackNumSelf == 1:
+                damage_reductions += defFirstAttackRedu
+                damage_reductions += defFirstStrikesRedu
+            if curAtk.attackNumSelf == 2:
+                if braveATKR:
+                    damage_reductions += defFirstStrikesRedu
+                else:
+                    damage_reductions += defSecondStrikesRedu
+            if curAtk.attackNumSelf >= 3:
+                damage_reductions += defSecondStrikesRedu
+            if curAtk.isConsecutive:
+                damage_reductions += defConsecutiveRedu
+
+        print(damage_reductions)
+
         # this should've been done at the start of the program
         roles = [attacker, defender]
         effects = [atkSpEffects, defSpEffects]
         stats = [atkStats, defStats]
         checkedDefs = [r, q]
         gains = [attackerGainWhenAttacking, defenderGainWhenAttacking, defenderGainWhenAttacked, attackerGainWhenAttacked]
-        reductions = [[atkHit1Reduction, atkHit2Reduction, atkHit3Reduction, atkHit4Reduction], [defHit1Reduction, defHit2Reduction, defHit3Reduction, defHit4Reduction]]
         miracles = [atkPseudoMiracleEnabled, defPseudoMiracleEnabled]
         trueDamages = [atkTrueDamageArr, defTrueDamageArr]
         dynamicTrueDamages = [atkTrueDamageFunc, defTrueDamageFunc]
@@ -2523,17 +2509,18 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         spDisables = [atkSpecialDisabled, defSpecialDisabled]
         curHPs = [atkHPCur, defHPCur]
         curSpCounts = [atkSpCountCur, defSpCountCur]
+        curDRRs = [atkDRR, defDRR]
 
+        # SpongebobPatrick
         spongebob = curAtk.attackOwner
         patrick = int(not curAtk.attackOwner)
 
-        curRedu = reductions[spongebob][curAtk.attackNumSelf-1]
-
         # this sucks
         strikeResult = attack(roles[spongebob], roles[patrick], effects[spongebob], effects[patrick], stats[spongebob], stats[patrick],
-               checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], curRedu, miracles[patrick], trueDamages[spongebob][curAtk.attackNumSelf-1], dynamicTrueDamages[spongebob],
+               checkedDefs[spongebob], gains[spongebob], gains[spongebob + 2], damage_reductions, miracles[patrick], trueDamages[spongebob][curAtk.attackNumSelf-1], dynamicTrueDamages[spongebob],
                spTrueDamages[spongebob], heals[spongebob], deepWoundsAllowance[spongebob], dmgReduPierces[spongebob], dmgReduPierces[spongebob + 2],
-               specialTriggers[spongebob], spDisables[spongebob], spDisables[patrick], curHPs[spongebob], curHPs[patrick], curSpCounts[spongebob], curSpCounts[patrick])
+               specialTriggers[spongebob], spDisables[spongebob], spDisables[patrick], curHPs[spongebob], curHPs[patrick], curSpCounts[spongebob], curSpCounts[patrick],
+               curDRRs[spongebob], curAtk.potentRedu)
 
         miracles[patrick] = strikeResult[0]
 
@@ -2635,7 +2622,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 # these will be handled by wherever after the combat function is called
 
 class Attack():
-    def __init__(self, attackOwner, isFollowUp, isConsecutive, attackNumSelf, attackNumAll, prevAttack):
+    def __init__(self, attackOwner, isFollowUp, isConsecutive, attackNumSelf, attackNumAll, prevAttack, potentRedu):
         self.attackOwner = attackOwner
         self.isFollowUp = isFollowUp
         self.isConsecutive = isConsecutive
@@ -2647,6 +2634,8 @@ class Attack():
         self.spCharges = (-1, -1)
         self.curHPs = (-1, -1)
         self.healed = -1
+
+        self.potentRedu = potentRedu
 
         self.is_finisher = False
 
@@ -2809,23 +2798,19 @@ goadArmor = Skill("Goad Armor", "Grants Atk/Spd+4 to armored allies within 2 spa
 player = Hero("Marth", "E!Marth", 0, "Sword", 0, [41, 45, 47, 33, 27], [50, 80, 90, 55, 40], 5, 165)
 enemy = Hero("Lucina", "B!Lucina", 0, "Lance", 0, [41, 34, 36, 27, 19], [50, 60, 60, 45, 35], 30, 165)
 
-player_weapon = Weapon("Hero-King Sword", "Hero-King Sword", "", 1, 1, "Sword", {"slaying": 1, "effDragon": 0, "BraveAW": 0}, {})
-enemy_weapon = Weapon("Iron Lance", "Iron Lance", "", 6, 1, "Lance", {}, {})
+player_weapon = Weapon("Hero-King Sword", "Hero-King Sword", "", 16, 1, "Sword", {"slaying": 1, "effDragon": 0}, {})
+enemy_weapon = Weapon("Iron Lance", "Iron Lance", "", 6, 1, "Lance", {"shez!":0}, {})
 
 player.set_skill(player_weapon, WEAPON)
 enemy.set_skill(enemy_weapon, WEAPON)
 
-# 50, 10
-# 60, 20
-# 70, 30
-# 80, 40
-potent1 = Skill("Potent 1", "", {"potentStrike": 1})
+potent1 = Skill("Potent 1", "", {"potentStrike": 4})
 defStance = Skill("Thing", "", {"defStance": 3})
 
 player.set_skill(potent1, BSKILL)
 enemy.set_skill(defStance, ASKILL)
 
-#player.set_skill(glimmer, 2)
+player.set_skill(glimmer, 2)
 #enemy.set_skill(luna, 2)
 
 print(simulate_combat(player, enemy, 0, 1, 2, []))
