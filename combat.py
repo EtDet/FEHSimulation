@@ -2356,6 +2356,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
         # damage reduction
         total_reduction = 1
+        full_atk = attack
         if not alwPierce and not(stkSpecialTriggered and spPierce):
             for x in curReduction:
                 total_reduction *= 1 - (x/100 * curDRR) # change by redu factor
@@ -2372,7 +2373,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             steSpecialTriggered = True
 
         # final rounded attack damage
-        attack = math.ceil(attack * total_reduction)
+        rounded_DR = (trunc(total_reduction * 100)) / 100
+        attack = math.ceil(attack * rounded_DR)
+
+        # reduced atk
+        damage_reduced = full_atk - attack
 
         # non-special Miracle
         curMiracleTriggered = False
@@ -2386,7 +2391,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             attack = steHPCur - 1
             steSpecialTriggered = True
 
-        if curMiracleTriggered: curMiracle = False
+        if curMiracleTriggered or steSpecialTriggered:
+            damage_reduced = attack
+            curMiracle = False
 
         # the attack™
         steHPCur -= attack  # goodness gracious

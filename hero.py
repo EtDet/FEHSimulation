@@ -3,7 +3,7 @@ from itertools import islice
 import random
 from enum import Enum
 import os
-#import pandas as pd
+import pandas as pd
 
 # CONSTANTS
 HP = 0
@@ -288,7 +288,7 @@ class Hero:
             required_vector -= 64 * (required_vector//2496)
 
             with open("growth_vectors.bin") as file:
-                my_slice = list(islice(file, required_vector % 2496, required_vector + 1))
+                my_slice = list(islice(file, int(required_vector) % 2496, int(required_vector) + 1))
 
             vector = (''.join(my_slice))[0:40]
 
@@ -632,6 +632,7 @@ class Status(Enum):
     Schism = 54 # 🔴 Nullifies DualStrike, TriangleAttack, and Pathfinder, unit does not count towards allies w/ TriangleAttack or DualStrike. If neutralized, those bonuses are neutralized as well
     DisableMiracle = 55 # 🔴 Disables skills which allow unit to survive with 1HP (besides special Miracle)
     TimesGrip = 60 # 🔴 Inflicts Atk/Spd/Def/Res-4 during next combat, neutralizes skills during allies' combats
+    CancelAction = 61 # 🟢 After start of turn skills trigger, unit's action ends immediately (cancels active units in Summoner Duels)
 
     # positive
 
@@ -699,7 +700,7 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 #veyle.set_skill(obscurité, 0)
 
 #print(veyle.visible_stats)
-'''
+
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
 weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
@@ -784,4 +785,3 @@ def makeSpecial(name):
 
     return Special(name, desc, effects, cooldown, spType)
 
-'''
