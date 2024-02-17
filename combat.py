@@ -10,6 +10,116 @@ SPD = 2
 DEF = 3
 RES = 4
 
+# this is gonna make life x100 better, trust
+class HeroModifiers:
+    def __init__(self):
+        # attack order
+        brave = False
+        vantage = False
+        desperation = False
+        hardy_bearing = False
+
+        potent_FU = False
+        potent_new_percentage = -1
+        
+        # follow-ups
+        follow_ups_skill = 0
+        follow_ups_spd = 0
+        follow_up_denials = 0
+        
+        # NFU
+        prevent_foe_FU = False
+        prevent_self_FU_denial = False
+        
+        # special
+        special_disabled = False
+        
+        spGainOnAtk = 0
+        spLossOnAtk = 0
+        spGainWhenAtkd = 0
+        spLossWhenAtkd = 0
+        
+        sp_charge_first = 0
+        sp_charge_FU = 0
+
+        double_def_sp_charge = 0
+        
+        # bonus neutralization
+        bonuses_neutralized = [False] * 4
+        penalties_neutralized = [False] * 4
+        
+        # percent damage reduction
+        DR_all_hits_NSP = []
+        DR_first_hit_NSP = []
+        DR_first_strikes_NSP = []
+        DR_second_strikes_NSP = []
+        DR_consec_strikes_NSP = []
+        DR_sp_trigger_next_only_NSP = []
+        DR_sp_trigger_next_only_SP = []
+        DR_all_hits_SP = []
+        DR_sp_trigger_next_all_SP = []
+        
+        damage_reduction_reduction = 1
+        
+        sp_pierce_DR = False
+        always_pierce_DR = False
+        
+        # true damage / true reduction
+        true_all_hits = 0
+        true_first_hit = 0
+        true_finish = 0
+        true_after_foe_first = 0
+        true_sp = 0 # wo dao
+        true_sp_next = 0 # divine pulse/negating fang
+        
+        all_hits = 0
+        TDR_first_strikes = 0
+        TDR_second_strikes = 0
+        TDR_on_def_sp = 0
+
+        self_infl_sp_dmg_redu = 0
+        
+        retaliatory = False
+        retaliatory_stacks = 0 # num stacks present on next hit, might put this outside factors
+
+        precombat_damage = 0
+        
+        # healing
+        mid_combat_heal = 0
+        finish_mid_combat_heal = 0
+        deep_wounds_allowance = 1
+
+        surge_heals = 0
+        
+        # miracle
+        pesudo_miracle = False
+        circlet_miracle = False
+        disable_foe_miracle = False
+        
+        # triangle adept
+        cancel_affinity = 0
+        
+        # post-combat
+        dmg_taken_after = 0
+        dmg_given_after = 0
+        dmg_taken_recoil = 0
+        
+        post_combat_heal = 0
+        post_combat_sp_charge = 0
+        
+        # post-combat statuses
+        post_combat_statuses = [[],[],[]]
+        
+        # other weird stuff
+        wrathful_staff = False
+        disable_foe_wrath_staff = False
+        
+        effectiveness = False
+        
+        hexblade = False
+        disalbe_foe_hexblade = False
+        
+
 def move_letters(s, letter):
     if letter not in ['A', 'D']:
         return "Invalid letter"
@@ -93,14 +203,14 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # common position-based conditions
     if isInSim:
-        atkAdjacentToAlly = attacker.tile.unitsWithinNSpaces(1, True)
-        atkAllyWithin2Spaces = attacker.tile.unitsWithinNSpaces(2, True)
-        atkAllyWithin3Spaces = attacker.tile.unitsWithinNSpaces(3, True)
-        atkAllyWithin4Spaces = attacker.tile.unitsWithinNSpaces(4, True)
-        defAdjacentToAlly = defender.tile.unitsWithinNSpaces(1, True)
-        defAllyWithin2Spaces = defender.tile.unitsWithinNSpaces(2, True)
-        defAllyWithin3Spaces = defender.tile.unitsWithinNSpaces(3, True)
-        defAllyWithin4Spaces = defender.tile.unitsWithinNSpaces(4, True)
+        atkAdjacentToAlly = attacker.tile.numUnitsWithinNSpaces(1, True)
+        atkAllyWithin2Spaces = attacker.tile.numUnitsWithinNSpaces(2, True)
+        atkAllyWithin3Spaces = attacker.tile.numUnitsWithinNSpaces(3, True)
+        atkAllyWithin4Spaces = attacker.tile.numUnitsWithinNSpaces(4, True)
+        defAdjacentToAlly = defender.tile.numUnitsWithinNSpaces(1, True)
+        defAllyWithin2Spaces = defender.tile.numUnitsWithinNSpaces(2, True)
+        defAllyWithin3Spaces = defender.tile.numUnitsWithinNSpaces(3, True)
+        defAllyWithin4Spaces = defender.tile.numUnitsWithinNSpaces(4, True)
     else:
         atkAdjacentToAlly = 0
         atkAllyWithin2Spaces = 0
@@ -111,7 +221,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defAllyWithin3Spaces = 0
         defAllyWithin4Spaces = 0
 
-    if isInSim: atkFoeWithin2Spaces = attacker.tile.unitsWithinNSpaces(1, False)
+    if isInSim: atkFoeWithin2Spaces = attacker.tile.numUnitsWithinNSpaces(1, False)
     else: atkFoeWithin2Spaces = 0
 
     atkInfAlliesWithin2Spaces = 0
@@ -190,16 +300,19 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     # triangle adept during combat, default of -1
     triAdept = -1
 
-    # cancel affinity, differs between ally and foe for
-    # levels 2/3 because my life can't be easy
-    atkCA = 0
-    defCA = 0
-
     # ignore range (distant/close counter)
     ignoreRng = False
 
     # prevent counterattacks from defender (sweep, flash)
     cannotCounter = False
+
+    atkr = HeroModifiers()
+    defr = HeroModifiers()
+
+    # cancel affinity, differs between ally and foe for
+    # levels 2/3 because my life can't be easy
+    atkCA = 0
+    defCA = 0
 
     # grants brave effect
     braveATKR = False
@@ -261,6 +374,9 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkSpReadyRedu = []
     atkSpTriggeredNextRedu = []
 
+    atkNextNonPierceDR = []
+    atkNextPierceDR = []
+
     defAllHitsRedu = []
     defFirstAttackRedu = []
     defFirstStrikesRedu = []
@@ -269,7 +385,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     defSpReadyRedu = []
     defSpTriggeredNextRedu = []
 
-    # pseudo-Miracle effects (refined Tyrfing)
+    defNextNonPierceDR = []
+    defNextPierceDR = []
+
+    # pseudo-Miracle effects (refined Tyrfing, Everliving Domain)
     atkPseudoMiracleEnabled = False
     defPseudoMiracleEnabled = False
 
@@ -277,12 +396,18 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkTrueDamage = 0
     defTrueDamage = 0
 
-    # needs to be per hit yaaaaaaaaaaaaay NOT LIKE THIS
+    # needs to be per hit yaaaaaaaaaaaaay NOT LIKE THIS NOT LIKE THIS NOT LIKE THIS
     atkTrueDamageArr = [0] * 4
     defTrueDamageArr = [0] * 4
 
-    atkTrueDamageFirstHit = 0
-    atkTrueDamageAllHit = 0
+    atkTrueDamage = 0
+    defTrueDamage = 0
+
+    atkTrueDamageRedu = 0
+    defTrueDamageRedu = 0
+
+    atkFirstStrikesDamageRedu = 0
+    defFirstStrikesDamageRedu = 0
 
     # finish skills
     atkFinishTrueDamage = 0
@@ -417,10 +542,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             vantageEnabled = True
 
     if "denesis" in atkSkills and atkHPGreaterEqual25Percent:
+        defFirstStrikesRedu.append(40)
         atkCombatBuffs[1] += 5 # + highest atk bonus on self/allies within 2 spaces
         # and the rest of them
 
     if "denesis" in defSkills and defHPGreaterEqual25Percent:
+        atkFirstStrikesRedu.append(40)
         defCombatBuffs[1] += 5 # + highest atk bonus on self/allies within 2 spaces
         # and the rest of them
 
@@ -576,12 +703,25 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         map(lambda x: x + 5, atkCombatBuffs)
         atkCombatBuffs[2] -= 5
 
+    # Seliph - Tyrfing - Base
+
     if "baseTyrfing" in atkSkills and atkHPCur / atkStats[0] <= 0.5:
         atkCombatBuffs[3] += 4
+
+    # Seliph/Sigurd - Divine Tyrfing - Base
 
     if "refDivTyrfing" in atkSkills and atkHPGreaterEqual50Percent:
         atkCombatBuffs[1] += 5
         atkCombatBuffs[3] += 5
+
+    if "refDivTyrfing" in defSkills and atkHPGreaterEqual50Percent:
+        defCombatBuffs[1] += 5
+        defCombatBuffs[3] += 5
+
+    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
+        defFirstAttackRedu.append(50)
+    if ("divTyrfing" in defSkills or "refDivTyrfing" in defSkills) and attacker.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
+        atkFirstAttackRedu.append(50)
 
     if "WE MOVE" in atkSkills and atkHPGreaterEqual50Percent:
         atkCombatBuffs[1] += 5
@@ -610,13 +750,22 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defMidCombatHeal += 8
         defNullAtkFU = True
 
+    # L!Seliph - Virtuous Tyrfing - Refined Eff
     if "NO MORE LOSSES" in atkSkills:
         defCombatBuffs[1] -= 5
         defCombatBuffs[3] -= 5
+        if defender.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
+            defAllHitsRedu.append(80)
+        else:
+            defAllHitsRedu.append(40)
 
     if "NO MORE LOSSES" in defSkills and defAllyWithin3Spaces:
         defCombatBuffs[1] -= 5
         defCombatBuffs[3] -= 5
+        if attacker.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
+            atkAllHitsRedu.append(80)
+        else:
+            atkAllHitsRedu.append(40)
 
     if "I HATE FIRE JOKES >:(" in atkSkills and spacesMovedByAtkr:
         map(lambda x: x + 5, atkCombatBuffs)
@@ -626,13 +775,18 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         map(lambda x: x + 5, defCombatBuffs)
         if defHPGreaterEqual25Percent: defPseudoMiracleEnabled
 
+    # L!Sigurd - Hallowed Tyrfing - Base
+
     if "WaitIsHeAGhost" in atkSkills and defHPGreaterEqual75Percent:
         map(lambda x: x + 5, atkCombatBuffs)
         atkSkillFollowUps += 1
+        defFirstAttackRedu.append(40)
 
     if "WaitIsHeAGhost" in defSkills and atkHPGreaterEqual75Percent:
         map(lambda x: x + 5, defCombatBuffs)
         defSkillFollowUps += 1
+        if attacker.getRange() == 2:
+            atkFirstAttackRedu.append(40)
 
     if "I'M STRONG AND YOU'RE TOAST" in atkSkills and atkHPGreaterEqual50Percent:
         atkCombatBuffs[1] += 4
@@ -648,6 +802,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "Ayragate" in atkSkills and defHPGreaterEqual75Percent:
         map(lambda x: x + 4, atkCombatBuffs)
+        defFirstAttackRedu.append(20)
+
+    if "Ayragate" in defSkills and atkHPGreaterEqual75Percent:
+        map(lambda x: x + 4, defCombatBuffs)
+        atkFirstAttackRedu.append(20)
 
     if "balmungBoost" in atkSkills and defHPEqual100Percent:
         map(lambda x: x + 4, atkCombatBuffs)
@@ -691,10 +850,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "MY TRAP! 🇺🇸" in atkSkills and atkAdjacentToAlly <= 1:
         map(lambda x: x + 4, atkCombatBuffs)
         defPostCombatStatusesApplied[2].append(Status.Discord)
+        defFirstAttackRedu.append(30)
 
     if "MY TRAP! 🇺🇸" in defSkills and defAdjacentToAlly <= 1:
         map(lambda x: x + 4, defCombatBuffs)
         defPostCombatStatusesApplied[2].append(Status.Discord)
+        atkFirstAttackRedu.append(30)
 
     if "leafSword" in atkSkills and defHPEqual100Percent:
         atkCombatBuffs[2] += 4
@@ -909,11 +1070,15 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if ("I fight for my friends" in atkSkills or "WILLYOUSURVIVE?" in atkSkills) and atkHPGreaterEqual25Percent:
         map(lambda x: x + 4, atkCombatBuffs)
 
+    # CH!Ike - Sturdy War Sword - Base
+
     if "sturdyWarrr" in atkSkills and atkHPGreaterEqual25Percent:
         map(lambda x: x + 5, atkCombatBuffs)
         if attacker.getSpecialType() == "Offense":
             if atkAllyWithin4Spaces >= 1:
                 atkSpChargeBeforeFirstStrike += math.trunc(attacker.getMaxSpecialCooldown()/2)
+            if atkAllyWithin4Spaces >= 2:
+                defFirstAttackRedu.append(10 * attacker.getMaxSpecialCooldown())
             if atkAllyWithin4Spaces >= 3:
                 atkNullDefFU, atkDoSkillFU = True
 
@@ -922,6 +1087,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         if defender.getSpecialType() == "Offense":
             if defAllyWithin4Spaces >= 1:
                 defSpChargeBeforeFirstStrike += math.trunc(defender.getMaxSpecialCooldown()/2)
+            if defAllyWithin4Spaces >= 2:
+                atkFirstAttackRedu.append(10 * defender.getMaxSpecialCooldown())
             if defAllyWithin4Spaces >= 3:
                 defNullAtkFU, defDoSkillFU = True
 
@@ -1058,32 +1225,54 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         atkCombatBuffs[2] += 5
         attackerGainWhenAttacking += 1
 
-    if "up b bair" in atkSkills: map(lambda x:x+4, atkCombatBuffs)
-    if "up b bair" in defSkills and defAllyWithin2Spaces: map(lambda x:x+4, defCombatBuffs)
+    if "up b bair" in atkSkills:
+        map(lambda x:x+4, atkCombatBuffs)
+    if "up b bair" in defSkills and defAllyWithin2Spaces:
+        map(lambda x:x+4, defCombatBuffs)
+
+    # Byleth - Creator Sword - Refined Eff
 
     if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills:
         atkSpPierceDR = True
-        if atkHPGreaterEqual25Percent: map(lambda x:x+4, atkCombatBuffs)
+        if atkHPGreaterEqual25Percent:
+            map(lambda x:x+4, atkCombatBuffs)
+            defFirstAttackRedu.append(30)
 
     if "HERE'S SOMETHING TO BELIEVE IN" in defSkills:
         defSpPierceDR = True
-        if defHPGreaterEqual25Percent: map(lambda x:x+4, defCombatBuffs)
+        if defHPGreaterEqual25Percent:
+            map(lambda x:x+4, defCombatBuffs)
+            atkFirstAttackRedu.append(30)
+
+    # SU!Edelgard - Regal Sunshade - Base
 
     if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent:
         numFoesLeft = 0
         numFoesWithin3Columns3Rows = 0
+
         atkCombatBuffs[1] += 6
         atkCombatBuffs[3] += 6
+        defFirstAttackRedu.append(40)
+
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
         if X <= numFoesWithin3Columns3Rows: braveATKR = True
 
     if "regalSunshade" in defSkills and defHPGreaterEqual25Percent:
         numFoesLeft = 0
         numFoesWithin3Columns3Rows = 0
+
         defCombatBuffs[1] += 6
         defCombatBuffs[3] += 6
+        atkFirstAttackRedu.append(40)
+
         X = 1 if numFoesLeft <= 2 else (2 if 3 <= numFoesLeft <= 5 else 3)
         if X <= numFoesWithin3Columns3Rows: braveDEFR = True
+
+    # Reginn - Lyngheiðr - Base
+    if "reginn :)" in atkSkills:
+        atkCombatBuffs[ATK] += 6
+        atkCombatBuffs[SPD] += 6
+        defFirstAttackRedu.append(30)
 
     # Catherine: Thunderbrand
 
@@ -1127,13 +1316,21 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         defCombatBuffs[4] += max(4, 10 - 000000 * 3)
         defPostCombatHealing += 7
 
+    # Ituski - Mirage Falchion - Refined Eff
+    # If unit initiates combat or is within 2 spaces of an ally:
+    #  - grants Atk/Spd/Def/Res+4 to unit
+    #  - unit makes a guaranteed follow-up attack
+    #  - reduces damage from first attack during combat by 30%
+
     if "Nintendo has forgotten about Mario…" in atkSkills:
         map(lambda x:x+4, atkCombatBuffs)
         atkSkillFollowUps += 1
+        defFirstAttackRedu.append(30)
 
     if "Nintendo has forgotten about Mario…" in defSkills or defAllyWithin2Spaces:
         map(lambda x:x+4, defCombatBuffs)
         defSkillFollowUps += 1
+        atkFirstAttackRedu.append(30)
 
     if "BONDS OF FIIIIRE, CONNECT US" in atkSkills and atkHPGreaterEqual25Percent:
         titlesAmongAllies = 0
@@ -1221,9 +1418,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "ow" in atkSkills and atkHPGreaterEqual25Percent:
         map(lambda x: x + 4, atkCombatBuffs)
+        defFirstAttackRedu.append(30)
 
     if "ow" in defSkills and defHPGreaterEqual25Percent:
         map(lambda x: x + 4, defCombatBuffs)
+        atkFirstAttackRedu.append(30)
 
     if "zzzzzzzzzzzzzzzz" in atkSkills and (defender.hasPenalty() or defHPGreaterEqual75Percent):
         defCombatBuffs[1] -= 5
@@ -1360,17 +1559,10 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "baseTyrfing" in defSkills and defHPCur / defStats[0] <= 0.5:
         defCombatBuffs[3] += 4
 
-    if "refDivTyrfing" in defSkills and atkHPGreaterEqual50Percent:
-        defCombatBuffs[1] += 5
-        defCombatBuffs[3] += 5
-
     if "WE MOVE" in defSkills and defHPGreaterEqual50Percent:
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
         defSkillFollowUps += 1
-
-    if "Ayragate" in defSkills and atkHPGreaterEqual75Percent:
-        map(lambda x: x + 4, defCombatBuffs)
 
     if "DRINK" in defSkills:
         defCombatBuffs[1] += 5
@@ -1458,8 +1650,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "laevPartner" in defSkills and atkHPGreaterEqual75Percent:
         defCombatBuffs[1] += 5
         defCombatBuffs[3] += 5
-
-
 
     if "triAdeptS" in defSkills and defSkills["triAdeptS"] > triAdept: triAdept = defSkills["triAdeptS"]
     if "triAdeptW" in defSkills and defSkills["triAdeptW"] > triAdept: triAdept = defSkills["triAdeptW"]
@@ -1563,10 +1753,12 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
         attackerLossWhenAttacking -= 1
 
     if "gregorSword!" in atkSkills:
+        defFirstAttackRedu.append(40)
         for i in range(1,5):
             defCombatBuffs -= 5 + max(defender.debuffs[i] * defPenaltiesNeutralized[i] * -1, 0) + max(defender.buffs[i] * DefPanicFactor * defPenaltiesNeutralized[i] * -1, 0)
 
     if "gregorSword!" in defSkills and defAllyWithin2Spaces:
+        atkFirstAttackRedu.append(40)
         for i in range(1,5):
             atkCombatBuffs -= 5 + max(attacker.debuffs[i] * atkPenaltiesNeutralized[i] * -1, 0) + max(attacker.buffs[i] * AtkPanicFactor * atkPenaltiesNeutralized[i] * -1, 0)
 
@@ -1664,7 +1856,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     # special charge goes down 1 by through being attacked or attacking
     # it can be modified to go down by 2 or not change at all through some skills
-    # in addition, some skills can nullify special changes such as the ones above
+    # in addition, some skills can nullify special charge changes such as the ones above
     # hey you can make 4 nice variables to save some lines here too, you should do that, me :)
 
     if "heavyBlade" in atkSkills and atkPhantomStats[1] > defPhantomStats[1] + max(-2 * atkSkills["heavyBlade"] + 7, 1):
@@ -2041,6 +2233,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     atkAlive = True
     defAlive = True
 
+    # wow this needs a rework
     def getSpecialHitDamage(effs, initStats, otherStats, defOrRes):
 
         spdDmg = 0  # For Lunar Flash + Lunar Flash II
@@ -2083,6 +2276,7 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             # return difference
             return attack - nonSpAttack + spdDmg
 
+        # multiplier-based (glimmer, astra)
         if "dmgBoost" in effs:
             # standard attack damage
             nonSpAttack = initStats[1] - targeted_defense
@@ -2184,92 +2378,8 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             attackList.append(Attack(1, isFollowUp, isConsecutive, D_Count, A_Count + D_Count, None if A_Count + D_Count == 1 else attackList[i - 1], potentRedu))
         i += 1
 
-    # Damage reduction per hit
-    # Computed here due to attack order/damage reduction reduction needing to be computed first
+    # Damage reduction calculated based on a difference between two stats (Dodge, etc.)
 
-    # Ituski - Mirage Falchion - Refined Eff
-    # If unit initiates combat or is within 2 spaces of an ally:
-    #  - grants Atk/Spd/Def/Res+4 to unit
-    #  - unit makes a guaranteed follow-up attack
-    #  - reduces damage from first attack during combat by 30%
-    if "Nintendo has forgotten about Mario…" in atkSkills:
-        defFirstAttackRedu.append(30)
-
-    if "Nintendo has forgotten about Mario…" in defSkills and defAllyWithin2Spaces:
-        atkFirstAttackRedu.append(30)
-
-    # Byleth - Creator Sword - Refined Eff
-    if "HERE'S SOMETHING TO BELIEVE IN" in atkSkills and atkHPGreaterEqual25Percent:
-        defFirstAttackRedu.append(30)
-    if "HERE'S SOMETHING TO BELIEVE IN" in defSkills and defHPGreaterEqual25Percent:
-        atkFirstAttackRedu.append(30)
-
-    # SU!Edelgard - Regal Sunshade - Base
-    if "regalSunshade" in atkSkills and atkHPGreaterEqual25Percent:
-        defFirstAttackRedu.append(40)
-    if "regalSunshade" in defSkills and defHPGreaterEqual25Percent:
-        atkFirstAttackRedu.append(40)
-
-    # CH!Ike - Sturdy War Sword - Base
-    if "sturdyWarrr" in atkSkills and atkHPGreaterEqual25Percent and attacker.getSpecialType() == "Offense" and atkAllyWithin4Spaces >= 2:
-        defFirstAttackRedu.append(10 * attacker.getMaxSpecialCooldown())
-    if "sturdyWarrr" in defSkills and defHPGreaterEqual25Percent and defender.getSpecialType() == "Offense" and defAllyWithin4Spaces >= 2:
-        atkFirstAttackRedu.append(10 * defender.getMaxSpecialCooldown())
-
-    # Reginn - Lyngheiðr - Base
-    if "reginn :)" in atkSkills:
-        defFirstAttackRedu.append(30)
-
-    # Seliph/Sigurd - Divine Tyrfing - Base
-    if ("divTyrfing" in atkSkills or "refDivTyrfing" in atkSkills) and defender.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
-        defFirstAttackRedu.append(50)
-    if ("divTyrfing" in defSkills or "refDivTyrfing" in defSkills) and attacker.wpnType in ["RTome", "BTome", "GTome", "CTome"]:
-        atkFirstAttackRedu.append(50)
-
-    # L!Seliph - Virtuous Tyrfing - Refined Eff
-    if "NO MORE LOSSES" in atkSkills:
-        if defender.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
-            defAllHitsRedu.append(80)
-        else:
-            defAllHitsRedu.append(40)
-
-    if "NO MORE LOSSES" in defSkills and defAllyWithin3Spaces:
-        if attacker.wpnType in ["RTome", "BTome", "GTome", "CTome", "Staff"]:
-            atkAllHitsRedu.append(80)
-        else:
-            atkAllHitsRedu.append(40)
-
-    if "gregorSword!" in atkSkills:
-        defFirstAttackRedu.append(40)
-    if "gregorSword!" in defSkills and defAllyWithin2Spaces:
-        atkFirstAttackRedu.append(40)
-
-    # L!Sigurd - Hallowed Tyrfing - Base
-    if "WaitIsHeAGhost" in atkSkills:
-        defFirstAttackRedu.append(40)
-    if "WaitIsHeAGhost" in defSkills and defender.getRange() == 2:
-        atkFirstAttackRedu.append(40)
-
-    # B!Marth
-    if "denesis" in atkSkills and atkHPGreaterEqual25Percent:
-        defFirstStrikesRedu.append(40)
-
-    if "denesis" in defSkills and defHPGreaterEqual25Percent:
-        atkFirstStrikesRedu.append(40)
-
-    # Ayra
-    if "Ayragate" in atkSkills and defHPGreaterEqual75Percent:
-        defFirstAttackRedu.append(20)
-    if "Ayragate" in defSkills and atkHPGreaterEqual25Percent:
-        atkFirstAttackRedu.append(20)
-
-    # Kempf
-    if "MY TRAP! 🇺🇸" in atkSkills and atkAdjacentToAlly <= 1:
-        defFirstAttackRedu.append(30)
-    if "MY TRAP! 🇺🇸" in defSkills and defAdjacentToAlly <= 1:
-        atkFirstAttackRedu.append(30)
-
-    # uhhhhhhh
     if "Just Lean" in atkSkills and atkHPGreaterEqual25Percent and atkPhantomStats[2] > defPhantomStats[2]:
         defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
@@ -2295,7 +2405,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
     if "LOVE PROVIIIIDES, PROTECTS US" in defSkills and defHPGreaterEqual25Percent and defPhantomStats[2] > atkPhantomStats[2]:
         atkAllHitsRedu.append(min(4 * (defPhantomStats[2] - atkPhantomStats[2], 40)))
 
-    # Dodge Status
     if Status.Dodge in atkSkills and atkPhantomStats[2] > defPhantomStats[2]:
         defAllHitsRedu.append(min(4 * (atkPhantomStats[2] - defPhantomStats[2], 40)))
 
@@ -2307,12 +2416,6 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
 
     if "reduFU" in defSkills and turn % 2 == 1 or not atkHPEqual100Percent:
         atkFirstAttackRedu.append(30 * (1 + int(followupA)))
-
-    if "ow" in atkSkills and atkHPGreaterEqual25Percent:
-        defFirstAttackRedu.append(30)
-
-    if "ow" in defSkills and defHPGreaterEqual25Percent:
-        atkFirstAttackRedu.append(30)
 
     # Change these to be introduced before, should be True if AOE special triggers (actually should it?)
     atkSpecialTriggered = False
@@ -2391,9 +2494,11 @@ def simulate_combat(attacker, defender, isInSim, turn, spacesMovedByAtkr, combat
             attack = steHPCur - 1
             steSpecialTriggered = True
 
-        if curMiracleTriggered or steSpecialTriggered:
-            damage_reduced = attack
+        if curMiracleTriggered:
             curMiracle = False
+
+        if curMiracleTriggered or steSpecialTriggered and "miracleSP" in steSpEffects:
+            damage_reduced = attack
 
         # the attack™
         steHPCur -= attack  # goodness gracious
@@ -2756,16 +2861,6 @@ vantage3 = Skill("Vantage 3", "If unit's HP ≤ 75% and foe initiates combat, un
 quickRiposte1 = Skill("Quick Riposte 1", "If unit's HP ≥ 90% and foe initiates combat, unit makes a guaranteed follow-up attack.", {"QRS": 1})
 quickRiposte2 = Skill("Quick Riposte 2", "If unit's HP ≥ 80% and foe initiates combat, unit makes a guaranteed follow-up attack.", {"QRS": 2})
 quickRiposte3 = Skill("Quick Riposte 3", "If unit's HP ≥ 70% and foe initiates combat, unit makes a guaranteed follow-up attack.", {"QRS": 3})
-
-windsweep1 = Skill("Windsweep 1",
-                   "If unit initiates combat, unit cannot make a follow-up attack. If unit’s Spd ≥ foe’s Spd+5 and foe uses sword, lance, axe, bow, dagger, or beast damage, foe cannot counterattack.",
-                   {"windsweep": 1})
-windsweep2 = Skill("Windsweep 2",
-                   "If unit initiates combat, unit cannot make a follow-up attack. If unit’s Spd ≥ foe’s Spd+3 and foe uses sword, lance, axe, bow, dagger, or beast damage, foe cannot counterattack.",
-                   {"windsweep": 2})
-windsweep3 = Skill("Windsweep 3",
-                   "If unit initiates combat, unit cannot make a follow-up attack. If unit’s Spd > foe’s Spd and foe uses sword, lance, axe, bow, dagger, or beast damage, foe cannot counterattack.",
-                   {"windsweep": 3})
 
 cancelAffinity1 = Skill("Cancel Affinity 1", "Neutralizes all weapon-triangle advantage granted by unit's and foe's skills.", {"cancelTA": 1})
 cancelAffinity2 = Skill("Cancel Affinity 2",

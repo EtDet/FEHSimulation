@@ -3,7 +3,7 @@ from itertools import islice
 import random
 from enum import Enum
 import os
-import pandas as pd
+#import pandas as pd
 
 # CONSTANTS
 HP = 0
@@ -143,6 +143,7 @@ class Hero:
         self.merges = 0
         self.flowers = 0
         self.flower_limit = flower_limit
+        self.flower_order = []
 
         self.emblem = None
         self.emblem_merges = 0
@@ -252,6 +253,8 @@ class Hero:
         sort_i = sort_indexes(self.stats[:])
         self.stats[HP] = tempHP
 
+        self.flower_order = sort_i[:]
+
         i = 1
         while i < flowers + 1:
             self.stats[sort_i[(i-1) % 5]] += 1
@@ -260,12 +263,29 @@ class Hero:
         self.flowers = flowers
         self.set_visible_stats()
 
+    def set_emblem_merges(self, merges):
+        # set to level 1
+        self.set_rarity(self.rarity)
+        self.set_merges(self.merges)
+        self.set_dragonflowers(self.flowers)
+
+        sort_i = self.flower_order
+
+        i = 1
+        while i < merges + 1:
+            self.stats[sort_i[(i - 1) % 5]] += 1
+            i += 1
+
+        self.emblem_merges = merges
+        self.set_visible_stats()
+
     def set_level(self, level):
 
         # set to level 1
         self.set_rarity(self.rarity)
         self.set_merges(self.merges)
         self.set_dragonflowers(self.flowers)
+        self.set_emblem_merges(self.emblem_merges)
 
         for i in range(0,5):
             cur_modifier = 0
@@ -288,7 +308,7 @@ class Hero:
             required_vector -= 64 * (required_vector//2496)
 
             with open("growth_vectors.bin") as file:
-                my_slice = list(islice(file, int(required_vector) % 2496, int(required_vector) + 1))
+                my_slice = list(islice(file, required_vector % 2496, required_vector + 1))
 
             vector = (''.join(my_slice))[0:40]
 
@@ -374,6 +394,9 @@ class Hero:
             self.specialMax = skill.cooldown
 
             if self.weapon is not None and "slaying" in self.weapon.effects:
+                self.specialCount = max(self.specialCount - self.weapon.effects["slaying"], 1)
+                self.specialMax = max(self.specialMax - self.weapon.effects["slaying"], 1)
+            if self.emblem == "Marth":
                 self.specialCount = max(self.specialCount - self.weapon.effects["slaying"], 1)
                 self.specialMax = max(self.specialMax - self.weapon.effects["slaying"], 1)
         else:
@@ -473,6 +496,10 @@ class Hero:
 
         return heroSkills
 
+    def getEmblemEffects(self):
+        if self.emblem is None: return {}
+        if self.emblem == "Marth": return {"shine on": 1, "slaying": 1}
+
     def getCooldown(self):
         if self.special != None: return self.special.getCooldown()
         else: return -1
@@ -504,16 +531,8 @@ class Hero:
         x = random.randint(0, 3)
         return self.spLines[x]
 
-    def haveAssist(self): return not self.assist is None
-
-    def attackType(self):
-        if self.weapon is None:
-            return 0
-        else:
-            if self.weapon.getRange() == 1:
-                return 2
-            else:
-                return 1
+    def haveAssist(self):
+        return not self.assist is None
 
 class Skill:
     def __init__(self, name, desc, effects):
@@ -632,7 +651,7 @@ class Status(Enum):
     Schism = 54 # 🔴 Nullifies DualStrike, TriangleAttack, and Pathfinder, unit does not count towards allies w/ TriangleAttack or DualStrike. If neutralized, those bonuses are neutralized as well
     DisableMiracle = 55 # 🔴 Disables skills which allow unit to survive with 1HP (besides special Miracle)
     TimesGrip = 60 # 🔴 Inflicts Atk/Spd/Def/Res-4 during next combat, neutralizes skills during allies' combats
-    CancelAction = 61 # 🟢 After start of turn skills trigger, unit's action ends immediately (cancels active units in Summoner Duels)
+    CancelAction = 61  # 🟢 After start of turn skills trigger, unit's action ends immediately (cancels active units in Summoner Duels)
 
     # positive
 
@@ -700,7 +719,7 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 #veyle.set_skill(obscurité, 0)
 
 #print(veyle.visible_stats)
-
+'''
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
 weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
@@ -785,3 +804,4 @@ def makeSpecial(name):
 
     return Special(name, desc, effects, cooldown, spType)
 
+'''
