@@ -3,7 +3,7 @@ from itertools import islice
 import random
 from enum import Enum
 import os
-#import pandas as pd
+import pandas as pd
 
 # CONSTANTS
 HP = 0
@@ -328,6 +328,15 @@ class Hero:
 
         self.set_level(self.level)
 
+    def set_emblem(self, emblem, emblem_merges):
+        if self.intName[:2] == "E!": return # temporary disabling of engaging emblems with each other
+
+        self.emblem = emblem
+        self.emblem_merges = emblem_merges
+
+        self.set_level(self.level)
+        self.set_skill(-1, -1)
+
     def getColor(self):
         if self.wpnType == "Sword" or self.wpnType == "RBow" or self.wpnType == "RDagger" or self.wpnType == "RTome" or self.wpnType == "RDragon" or self.wpnType == "RBeast":
             return "Red"
@@ -390,13 +399,13 @@ class Hero:
             self.skill_stat_mods[RES] += skill.effects["spectrumBoost"]
 
         if self.special is not None:
-            self.specialCount = skill.cooldown
-            self.specialMax = skill.cooldown
+            self.specialCount = self.special.cooldown
+            self.specialMax = self.special.cooldown
 
             if self.weapon is not None and "slaying" in self.weapon.effects:
                 self.specialCount = max(self.specialCount - self.weapon.effects["slaying"], 1)
                 self.specialMax = max(self.specialMax - self.weapon.effects["slaying"], 1)
-            if self.emblem == "Marth":
+            if self.emblem is not None and self.emblem == "Marth":
                 self.specialCount = max(self.specialCount - self.weapon.effects["slaying"], 1)
                 self.specialMax = max(self.specialMax - self.weapon.effects["slaying"], 1)
         else:
@@ -493,6 +502,9 @@ class Hero:
         if self.bskill != None: heroSkills.update(self.bskill.effects)
         if self.cskill != None: heroSkills.update(self.cskill.effects)
         if self.sSeal != None: heroSkills.update(self.sSeal.effects)
+        if self.xskill != None: heroSkills.update(self.xskill.effects)
+
+        if self.emblem != None: heroSkills.update(self.getEmblemEffects())
 
         return heroSkills
 
@@ -719,7 +731,7 @@ veyle = Hero("Veyle", "Veyle", 17, "BTome", 0, [39, 46, 30, 21, 46], [50, 70, 50
 #veyle.set_skill(obscurité, 0)
 
 #print(veyle.visible_stats)
-'''
+
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 hero_sheet = pd.read_csv(__location__ + '\\FEHstats.csv')
 weapon_sheet = pd.read_csv(__location__ + '\\FEHWeapons.csv')
@@ -804,4 +816,3 @@ def makeSpecial(name):
 
     return Special(name, desc, effects, cooldown, spType)
 
-'''
