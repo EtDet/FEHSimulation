@@ -15,4 +15,4 @@ because it is a live-service game, it will happen.
 
 I am but a college student with this being a passion project, so this will be in progress for a while lol.
 
-Currently, the repository is in an unusable state, but will be cleaned up in the future for use.
+Currently, the repository is in an unusable state, but a new repository will be created for public use.
